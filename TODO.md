@@ -3,9 +3,9 @@
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 0. Ground in facts (Context docs, EDGAR, sample filings) | ✅ done | Berkshire CIK 1067983 / accession 0001193125-26-054580 verified end-to-end. |
-| 1. Endpoint discovery + Product Contract | ✅ done | See `docs/PRODUCT_CONTRACT.md`. Awaiting approval to start Phase 2. |
-| 2. Design (DB schema + tool I/O schemas) | ⏳ pending approval | After contract sign-off. |
-| 3. Implementation (12 numbered steps) | ⏳ blocked by Phase 2 | Build order locked in original prompt. |
+| 1. Endpoint discovery + Product Contract | ✅ done | See `docs/PRODUCT_CONTRACT.md`. |
+| 2. Design (DB schema + tool I/O schemas) | ✅ done | Migrations in `/migrations`, schemas in `/src/server/schemas`, contract tests 88/88 green. Awaiting approval to start Phase 3. |
+| 3. Implementation (12 numbered steps) | ⏳ pending approval | Build order locked in original prompt. |
 | 4. Deployment (Fly.io) | ⏳ blocked by Phase 3 | Operator runs `flyctl`; we provide commands + env checklist. |
 | 5. Register on Context | ⏳ blocked by Phase 4 | Operator stakes $10 USDC, generates `CONTEXT_API_KEY` + `TOOL_ID`. |
 | 6. Optimization Skill | ⏳ blocked by Phase 5 | Target: ≥95% pass rate AND ≥7 high-differentiation prompts. |

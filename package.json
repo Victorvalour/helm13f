@@ -1,0 +1,30 @@
+{
+  "name": "helm13f",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Helm13F \u2014 institutional-ownership delta intelligence for US equities. MCP server for Context Protocol.",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

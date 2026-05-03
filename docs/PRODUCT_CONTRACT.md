@@ -112,10 +112,12 @@ Every Query tool returns `{ content: [...], structuredContent: <envelope> }` whe
     "topByPctOfBookFilerCIK": "0001067983"
   },
 
-  // 4. Cluster signal (only Q5 / Q6 populate; others omit).
+  // 4. Cluster signal — ALWAYS PRESENT in every Query tool's envelope as a
+  //    nullable property. Stable shape across tools. Q5/Q6 may populate;
+  //    Q1/Q2/Q3/Q4 always emit `null`. Never omit.
   "clusterSignal": {
     "detected": true,
-    "tier": "notable",                  // weak | notable | strong | null
+    "tier": "notable",                  // weak | notable | strong
     "memberCount": 5,
     "memberCIKs": ["0001067983", "..."],
     "strength": 0.0432                  // sum of pctOfBook deltas across cluster
@@ -148,13 +150,19 @@ Every Query tool returns `{ content: [...], structuredContent: <envelope> }` whe
     "notes": "Q4 2025 filing season concluded 2026-02-17."
   },
 
-  // 7. Confidence — explicit gap signals.
+  // 7. Confidence — explicit gap signals from a closed taxonomy (machine-discriminable).
   "confidence": {
     "level": "high",                    // high | moderate | low
     "reasoning": "All 12 managers in answer have parsed Q4 2025 filings.",
     "factCount": 12,
-    "gapSignals": []                    // e.g. "missing Q3 baseline for filer X"
+    "gapSignals": []                    // closed enum, see below
   },
+  //   gapSignals[] enum (closed):
+  //   - "fuzzy_match_below_threshold"        — Q4: filer name match confidence below cutoff; result may not be the intended filer
+  //   - "missing_prior_quarter_for_filer"    — no parsed prior-quarter filing for this filer; deltas may be incomplete
+  //   - "missing_current_quarter_for_filer"  — no parsed current-quarter filing for this filer
+  //   - "cusip_unresolved"                   — one or more CUSIPs in the result lack a ticker mapping
+  //   - "amendment_pending"                  — a 13F-HR/A is known to be in flight but not yet parsed
 
   // 8. View hints — runtime uses for table rendering in the Context app.
   "view": {
@@ -163,13 +171,21 @@ Every Query tool returns `{ content: [...], structuredContent: <envelope> }` whe
     "weightColumn": "pctOfBook"
   },
 
-  // 9. Coverage scope + season status — keeps consumers from misinterpreting "no holding" as "no exposure".
+  // 9. Coverage scope + season status + truncation signal.
+  //    `meta.truncated` is a top-level honest signal of incompleteness, NOT an error;
+  //    it MUST be present on every envelope (default `false`). When true,
+  //    `totalRowsAvailable` reports how many rows existed before the limit applied.
+  //    Truncation is deterministic: rows are sorted by pctOfBook descending so a
+  //    limit returns the most material movers first.
   "meta": {
     "coverageScope": "long_us_equity",
     "seasonStatus": "complete",         // complete | in_progress | between_seasons
     "filersIngestedCount": 4823,
     "restatementApplied": false,
-    "valueScale": "USD"                 // USD | USD_THOUSANDS — see §13(1)
+    "valueScale": "USD",                // USD | USD_THOUSANDS — see §13(1)
+    "truncated": false,
+    "totalRowsAvailable": 12,
+    "limitApplied": 500
   }
 }
 ```
@@ -189,8 +205,16 @@ The ENVELOPE wrapper itself is what each tool's `outputSchema` describes (root `
 - `superinvestorTier` ∈ `"legendary" | "well-known" | "notable" | null`.
 - `clusterTier` ∈ `"weak" | "notable" | "strong" | null`.
 
+**Invariant — `isSuperinvestor` × `superinvestorTier`** (every row schema): `isSuperinvestor === false` ↔ `superinvestorTier === null`. Always paired; never desynchronised. The published `outputSchema` documents this in property descriptions; the parser/loader enforces it at write time; contract tests assert it on every fixture. (We don't ship JSON-Schema `if/then` because the Context runtime validator's support is unverified — keeping the schema portable.)
+
+**Pagination & deterministic ordering** (calibration 5):
+- Every Query tool with a tickered or filered axis takes an optional `limit?: number`.
+  - **Defaults:** Q1 / Q2 / Q3 / Q5 / Q6 / E2 = `500`. Q4 / E1 = `1000`. Q5 is naturally bounded by the curated roster (~150) but accepts `limit` for shape consistency.
+- Rows are sorted by `pctOfBook` **descending** (most-conviction first), so any `limit` returns the most material movers.
+- `meta.truncated`, `meta.totalRowsAvailable`, `meta.limitApplied` MUST be present on every envelope (`truncated=false` when no truncation occurred).
+
 ### Q1 `query_new_initiations_in_ticker`
-**Input:** `{ ticker: string, quarter?: string, minPctOfBook?: number, includeNonSuperinvestors?: boolean }`
+**Input:** `{ ticker: string, quarter?: string, minPctOfBook?: number, includeNonSuperinvestors?: boolean, limit?: number /* default 500 */ }`
 
 **Row shape:**
 ```jsonc
@@ -220,7 +244,7 @@ The ENVELOPE wrapper itself is what each tool's `outputSchema` describes (root `
 **Row shape:** identical to Q1 except `sharesNew` → `sharesExited`, plus `priorQuarterAccessionNumber` and `priorPctOfBook` (the conviction *before* exit). `currentQuarterAccessionNumber` references the filing where the holding is now absent.
 
 ### Q3 `query_material_resizes_in_ticker`
-**Input:** `{ ticker: string, quarter?: string, minDeltaPct?: number /* default 0.25 */ }`
+**Input:** `{ ticker: string, quarter?: string, minDeltaPct?: number /* default 0.25 */, limit?: number /* default 500 */ }`
 **Row shape:** Q1 fields plus:
 ```jsonc
 {
@@ -237,7 +261,7 @@ The ENVELOPE wrapper itself is what each tool's `outputSchema` describes (root `
 ```
 
 ### Q4 `query_filer_quarter_delta`
-**Input:** `{ filerNameOrCIK: string, currentQuarter?: string, priorQuarter?: string, includeUnchanged?: boolean }`
+**Input:** `{ filerNameOrCIK: string, currentQuarter?: string, priorQuarter?: string, includeUnchanged?: boolean, limit?: number /* default 1000, applied per sub-array */ }`
 
 If `filerNameOrCIK` is not a CIK pattern, run fuzzy resolution. If confidence < threshold, return `{ isError: true, content: [...] }` with `errorCode: "ambiguous_filer"` and a `candidates` array (top 3 with confidence scores).
 
@@ -260,11 +284,11 @@ If `filerNameOrCIK` is not a CIK pattern, run fuzzy resolution. If confidence < 
 ```
 
 ### Q5 `query_superinvestor_cluster_on_ticker`
-**Input:** `{ ticker: string, quarter?: string }`
+**Input:** `{ ticker: string, quarter?: string, limit?: number /* default 500 */ }`
 **Envelope `rows`:** the Q1-shape items for cluster members only. `clusterSignal` is the primary payload.
 
 ### Q6 `query_full_ticker_delta_picture`
-**Input:** `{ ticker: string, quarter?: string }`
+**Input:** `{ ticker: string, quarter?: string, limit?: number /* default 500, applied per bucket */ }`
 **Envelope `rows`:** four buckets in one object:
 ```jsonc
 {
@@ -281,12 +305,12 @@ If `filerNameOrCIK` is not a CIK pattern, run fuzzy resolution. If confidence < 
 ```
 
 ### E1 `get_filer_delta`
-**Input:** `{ filerCIK: string /* 10-digit padded */, currentQuarter?: string, priorQuarter?: string }`
+**Input:** `{ filerCIK: string /* 10-digit padded */, currentQuarter?: string, priorQuarter?: string, limit?: number /* default 1000 per sub-array */ }`
 **Output:** Q4-shape (no fuzzy resolution).
 **`_meta.pricing.executeUsd: "0.001"`**, `latencyClass: "instant"`, `surface: "both"`, `queryEligible: true`.
 
 ### E2 `get_ticker_delta`
-**Input:** `{ ticker: string, quarter?: string, minPctOfBookFilter?: number }`
+**Input:** `{ ticker: string, quarter?: string, minPctOfBookFilter?: number, limit?: number /* default 500 per bucket */ }`
 **Output:** Q6-shape.
 **`_meta.pricing.executeUsd: "0.001"`**, `latencyClass: "instant"`, `surface: "both"`, `queryEligible: true`.
 
@@ -440,6 +464,8 @@ For ticker `T` and current quarter `Q`:
 
 The candidate prompt pool in §6 is designed against this target from Phase 1, not retrofitted in Phase 6. The Optimization Skill's iterative loop (≤5 iterations) tunes schema/description text against the ≥95%/≥7 bar.
 
+**Phase 6 wallet-drawdown watchpoint (runbook).** The Optimization Skill makes real, billed query calls and is wallet-funded. After the first 10–20 validation calls during the Skill run we instrument a wallet-balance check; if E3/E4 discovery calls or any other method are drawing more than the back-of-envelope estimate (≥30% of starting balance), pause and surface the drawdown to the operator before continuing. This is a runbook concern, recorded in `docs/OPTIMIZATION_ARTIFACT.json` under `notes.walletWatchpoint`, not a code change in the server itself.
+
 ## 15. EDGAR endpoint catalog (Builder Template Phase 1 — endpoint discovery)
 
 All EDGAR endpoints below verified in Phase 0 against Berkshire CIK `1067983`, accession `0001193125-26-054580`.
@@ -537,4 +563,5 @@ Helm13F is ready for `grants@ctxprotocol.com` review when **all** of:
 - [ ] All 5 reviewer-named capabilities ship with passing tests.
 - [ ] Ingestion cron deployed and verified to refresh on schedule.
 - [ ] `docs/OPTIMIZATION_ARTIFACT.json` shows `signoff.overallStatus = "PASS"` with `passRate ≥ 0.95` AND `highDifferentiationCount ≥ 7`.
+- [ ] Listing description on the Context developer dashboard auto-pushed by the Optimization Skill, includes Features / Try Asking (≥7 questions) / Agent Tips per the MCP Server Analysis Prompt (≤5000 chars, no em-dashes, no markdown bold).
 - [ ] 30-day uptime monitoring in place (for the second $500 grant payment).
