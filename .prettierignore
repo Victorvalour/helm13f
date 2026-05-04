@@ -3,4 +3,5 @@ dist/
 coverage/
 pnpm-lock.yaml
 migrations/
+tests/fixtures/
 *.md
