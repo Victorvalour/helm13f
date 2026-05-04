@@ -85,7 +85,7 @@ Designed in Phase 1 (not deferred to Phase 6) to satisfy the upgraded target: **
 | P2 | Q2 (exits) | Conviction-weighted delta | Requires prior-quarter holdings + current-quarter absence; LLMs hallucinate or refuse. |
 | P3 | Q3 (≥25% resizes) | Quantitative threshold | LLMs cannot enforce a numeric threshold against real share counts. |
 | P4 | Q4 with fuzzy "Burry" | Fuzzy filer resolution + dual-quarter delta | LLMs hallucinate Burry's holdings; we resolve the name to CIK 0001649339 and return real EDGAR-sourced deltas. |
-| P5 | Q5 (cluster) | Curated roster + cross-filer math | Requires the maintained ~150-name roster; LLMs cannot enumerate it. |
+| P5 | Q5 (cluster) | Curated roster + cross-filer math | Requires the maintained ~150-name roster; LLMs cannot enumerate it. Q5 returns its own per-event row shape (`ClusterEventRow`, see §8) distinguishing `new` initiations from material `add`s and exposing per-row `pctOfBookDelta`. |
 | P6 | Q6 (composite) | Composite delta + provenance | LLMs return prose, not structured deltas with accession numbers. |
 | P7 | Multi-class disambiguation: "How did BRK-A vs BRK-B institutional ownership change last quarter?" | Multi-share-class CUSIP disambiguation | LLMs conflate Class A/B; we keep them on separate CUSIPs with separate deltas. |
 | P8 | Amendment awareness: "Show me the most recent quarter's 13F-HR/A amendments and what changed." | Restatement handling | LLMs do not know which filings were restated; we mark `restatementApplied`. |
@@ -192,6 +192,8 @@ Every Query tool returns `{ content: [...], structuredContent: <envelope> }` whe
 
 The ENVELOPE wrapper itself is what each tool's `outputSchema` describes (root `type: "object"`). The per-tool variation lives inside `rows.items.properties`.
 
+**Envelope-level invariant (calibration 7).** For Q5 specifically, `clusterSignal.strength` MUST equal the sum of `rows[i].pctOfBookDelta` across the returned cluster-event rows (modulo floating-point at the 6th decimal). The handler computes both off the same domain layer; the contract test suite asserts the equality on every Q5 fixture.
+
 ## 8. Per-tool input/output contracts
 
 **Conventions**
@@ -285,7 +287,42 @@ If `filerNameOrCIK` is not a CIK pattern, run fuzzy resolution. If confidence < 
 
 ### Q5 `query_superinvestor_cluster_on_ticker`
 **Input:** `{ ticker: string, quarter?: string, limit?: number /* default 500 */ }`
-**Envelope `rows`:** the Q1-shape items for cluster members only. `clusterSignal` is the primary payload.
+**Envelope `rows`:** array of `ClusterEventRow` items (calibration 7 — Q5 has its own row shape, not Q1-shape). `clusterSignal` is the primary payload; the row array is the per-member breakdown.
+
+**`ClusterEventRow` shape:**
+```jsonc
+{
+  // Filer + issuer identity (same as Q1 row)
+  "filerCIK": "0001067983",
+  "filerName": "BERKSHIRE HATHAWAY INC",
+  "filerDisplayName": "Berkshire Hathaway",
+  "isSuperinvestor": true,
+  "superinvestorTier": "legendary",
+  "primaryStrategy": "value",
+  "ticker": "POOL",
+  "issuerName": "POOL CORP",
+  "cusip": "73278L105",
+  "convictionTier": "starter",            // current-quarter tier (post-event)
+
+  // Cluster-event-specific fields:
+  "clusterEventType": "new",              // "new" | "add"
+  "sharesAttributed": 404057,             // for "new": full position size; for "add": currentShares - priorShares
+  "priorPctOfBook": null,                 // null for "new", number for "add"
+  "currentPctOfBook": 0.0018,
+  "pctOfBookDelta": 0.0018,               // currentPctOfBook - (priorPctOfBook ?? 0)
+  "priorQuarterAccessionNumber": null,    // null for "new", required for "add"
+  "currentQuarterAccessionNumber": "0001193125-26-054580",
+
+  "sourceURL": "https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml",
+  "filedAt": "2026-02-17"
+}
+```
+
+**Row-level invariants** (parser/loader enforced; contract tests assert on every fixture):
+- `clusterEventType="new"` ↔ `priorPctOfBook IS NULL` ↔ `priorQuarterAccessionNumber IS NULL`.
+- `clusterEventType="add"` ↔ both prior fields are populated.
+- `pctOfBookDelta === currentPctOfBook - (priorPctOfBook ?? 0)`.
+- Envelope-level: `clusterSignal.strength === sum(rows[i].pctOfBookDelta)` modulo floating-point at the 6th decimal.
 
 ### Q6 `query_full_ticker_delta_picture`
 **Input:** `{ ticker: string, quarter?: string, limit?: number /* default 500, applied per bucket */ }`
@@ -407,7 +444,8 @@ For ticker `T` and current quarter `Q`:
 1. Find every superinvestor (E3) whose Q-filing has a `new` or `add` event on `T`.
 2. `memberCount = |{filers}|`. If `memberCount < 3` → no cluster.
 3. `tier = weak (3-4) | notable (5-7) | strong (>=8)`.
-4. `strength = sum_over_members(pctOfBookDelta)` where `pctOfBookDelta = currentPctOfBook - priorPctOfBook` (priorPctOfBook = 0 for `new`).
+4. `strength = sum_over_members(pctOfBookDelta)` where `pctOfBookDelta = currentPctOfBook - (priorPctOfBook ?? 0)` (`priorPctOfBook` is `null` for `new`, treated as 0 for the sum).
+5. **Envelope-level invariant (calibration 7):** `clusterSignal.strength === sum(rows[i].pctOfBookDelta)`. Computed off the same domain layer; asserted in the Q5 contract tests.
 
 ## 10. Five reviewer-named capabilities — implementation map
 

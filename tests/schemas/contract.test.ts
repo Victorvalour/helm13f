@@ -197,18 +197,141 @@ const TICKER_DELTA_ROWS = {
   materialTrims: [],
 };
 
+// Calibration-7 cluster event rows: 5-member synthetic cluster.
+// Each row's pctOfBookDelta is what cluster-strength sums.
+// Mix of 'new' and 'add' to exercise both branches of the schema.
+const CLUSTER_EVENT_ROWS = [
+  // legendary 'new'
+  {
+    filerCIK: '0001067983',
+    filerName: 'BERKSHIRE HATHAWAY INC',
+    filerDisplayName: 'Berkshire Hathaway',
+    isSuperinvestor: true,
+    superinvestorTier: 'legendary',
+    primaryStrategy: 'value',
+    ticker: 'POOL',
+    issuerName: 'POOL CORP',
+    cusip: '73278L105',
+    convictionTier: 'starter',
+    clusterEventType: 'new',
+    sharesAttributed: 404057,
+    priorPctOfBook: null,
+    currentPctOfBook: 0.0018,
+    pctOfBookDelta: 0.0018,
+    priorQuarterAccessionNumber: null,
+    currentQuarterAccessionNumber: '0001193125-26-054580',
+    sourceURL:
+      'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
+    filedAt: '2026-02-17',
+  },
+  // well-known 'add'
+  {
+    filerCIK: '0001649339',
+    filerName: 'SCION ASSET MANAGEMENT, LLC',
+    filerDisplayName: 'Scion Asset Management',
+    isSuperinvestor: true,
+    superinvestorTier: 'well-known',
+    primaryStrategy: 'value',
+    ticker: 'POOL',
+    issuerName: 'POOL CORP',
+    cusip: '73278L105',
+    convictionTier: 'meaningful',
+    clusterEventType: 'add',
+    sharesAttributed: 50000,
+    priorPctOfBook: 0.0085,
+    currentPctOfBook: 0.0135,
+    pctOfBookDelta: 0.005,
+    priorQuarterAccessionNumber: '0001649339-25-000003',
+    currentQuarterAccessionNumber: '0001649339-26-000003',
+    sourceURL:
+      'https://www.sec.gov/Archives/edgar/data/1649339/000164933926000003/holdings.xml',
+    filedAt: '2026-02-14',
+  },
+  // legendary 'new'
+  {
+    filerCIK: '0001336528',
+    filerName: 'PERSHING SQUARE CAPITAL MANAGEMENT, L.P.',
+    filerDisplayName: 'Pershing Square',
+    isSuperinvestor: true,
+    superinvestorTier: 'legendary',
+    primaryStrategy: 'event-driven',
+    ticker: 'POOL',
+    issuerName: 'POOL CORP',
+    cusip: '73278L105',
+    convictionTier: 'meaningful',
+    clusterEventType: 'new',
+    sharesAttributed: 1200000,
+    priorPctOfBook: null,
+    currentPctOfBook: 0.0250,
+    pctOfBookDelta: 0.0250,
+    priorQuarterAccessionNumber: null,
+    currentQuarterAccessionNumber: '0001336528-26-000004',
+    sourceURL:
+      'https://www.sec.gov/Archives/edgar/data/1336528/000133652826000004/holdings.xml',
+    filedAt: '2026-02-13',
+  },
+  // notable 'add'
+  {
+    filerCIK: '0001029160',
+    filerName: 'GREENLIGHT CAPITAL INC',
+    filerDisplayName: 'Greenlight Capital',
+    isSuperinvestor: true,
+    superinvestorTier: 'well-known',
+    primaryStrategy: 'value',
+    ticker: 'POOL',
+    issuerName: 'POOL CORP',
+    cusip: '73278L105',
+    convictionTier: 'starter',
+    clusterEventType: 'add',
+    sharesAttributed: 90000,
+    priorPctOfBook: 0.0028,
+    currentPctOfBook: 0.0082,
+    pctOfBookDelta: 0.0054,
+    priorQuarterAccessionNumber: '0001029160-25-000005',
+    currentQuarterAccessionNumber: '0001029160-26-000005',
+    sourceURL:
+      'https://www.sec.gov/Archives/edgar/data/1029160/000102916026000005/holdings.xml',
+    filedAt: '2026-02-12',
+  },
+  // notable 'new'
+  {
+    filerCIK: '0001113169',
+    filerName: 'OAKMARK FUNDS',
+    filerDisplayName: 'Oakmark',
+    isSuperinvestor: true,
+    superinvestorTier: 'notable',
+    primaryStrategy: 'value',
+    ticker: 'POOL',
+    issuerName: 'POOL CORP',
+    cusip: '73278L105',
+    convictionTier: 'meaningful',
+    clusterEventType: 'new',
+    sharesAttributed: 850000,
+    priorPctOfBook: null,
+    currentPctOfBook: 0.0110,
+    pctOfBookDelta: 0.0110,
+    priorQuarterAccessionNumber: null,
+    currentQuarterAccessionNumber: '0001113169-26-000007',
+    sourceURL:
+      'https://www.sec.gov/Archives/edgar/data/1113169/000111316926000007/holdings.xml',
+    filedAt: '2026-02-11',
+  },
+];
+
+// Sum of pctOfBookDelta across the 5 rows above:
+// 0.0018 + 0.0050 + 0.0250 + 0.0054 + 0.0110 = 0.0482
+const CLUSTER_ROWS_STRENGTH_SUM = CLUSTER_EVENT_ROWS.reduce(
+  (acc, r) => acc + r.pctOfBookDelta,
+  0,
+);
+
 const CLUSTER_SIGNAL_DETECTED = {
   detected: true,
   tier: 'notable',
-  memberCount: 5,
-  memberCIKs: [
-    '0001067983',
-    '0001649339',
-    '0001336528',
-    '0001029160',
-    '0001113169',
-  ],
-  strength: 0.0432,
+  memberCount: CLUSTER_EVENT_ROWS.length,
+  memberCIKs: CLUSTER_EVENT_ROWS.map((r) => r.filerCIK),
+  // Invariant: strength === sum(rows[i].pctOfBookDelta)
+  strength: CLUSTER_ROWS_STRENGTH_SUM,
 };
 
 function makeQueryEnvelope(rows: unknown, options?: { clusterSignal?: unknown }) {
@@ -320,14 +443,77 @@ describe('Q4 query_filer_quarter_delta — outputSchema validates synthetic payl
 
 describe('Q5 query_superinvestor_cluster_on_ticker — outputSchema validates synthetic payload', () => {
   const validate = ajv.compile(Q5.outputSchema);
-  it('valid envelope with detected cluster passes', () => {
+
+  it('valid envelope with 5-member cluster (mix of new + add) passes', () => {
     const ok = validate(
-      makeQueryEnvelope([Q1_NEW_INITIATION_ROW], {
+      makeQueryEnvelope(CLUSTER_EVENT_ROWS, {
         clusterSignal: CLUSTER_SIGNAL_DETECTED,
       }),
     );
     expect(validate.errors).toBeNull();
     expect(ok).toBe(true);
+  });
+
+  it("schema-accepts a 'new' cluster row even when priorPctOfBook is wrongly non-null (semantic invariant is enforced in the parser, not the schema)", () => {
+    const baseRow = CLUSTER_EVENT_ROWS[0] as Record<string, unknown>;
+    const badRow: Record<string, unknown> = { ...baseRow, priorPctOfBook: 0.001 };
+    const env = makeQueryEnvelope([badRow], {
+      clusterSignal: {
+        ...CLUSTER_SIGNAL_DETECTED,
+        memberCount: 1,
+        memberCIKs: [badRow.filerCIK as string],
+        strength: badRow.pctOfBookDelta as number,
+      },
+    });
+    // The invariant ('new' ↔ null priorPctOfBook) is enforced in the parser/loader,
+    // not in JSON Schema (we don't ship if/then). Schema-level pass is expected.
+    expect(validate(env)).toBe(true);
+  });
+
+  it("rejects an unknown clusterEventType value", () => {
+    const badRow = { ...CLUSTER_EVENT_ROWS[0], clusterEventType: 'trim' };
+    const env = makeQueryEnvelope([badRow], { clusterSignal: CLUSTER_SIGNAL_DETECTED });
+    expect(validate(env)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Calibration 7 — cluster strength === sum(rows[].pctOfBookDelta)
+// (envelope-level invariant; asserted on the synthetic 5-member cluster)
+// ---------------------------------------------------------------------
+describe('Calibration 7 — clusterSignal.strength equals sum of row pctOfBookDeltas', () => {
+  it('synthetic 5-member cluster: strength matches row sum to 6 decimal places', () => {
+    const sumFromRows = CLUSTER_EVENT_ROWS.reduce(
+      (acc, r) => acc + r.pctOfBookDelta,
+      0,
+    );
+    expect(CLUSTER_SIGNAL_DETECTED.strength).toBeCloseTo(sumFromRows, 6);
+  });
+
+  it('mix of new + add events: each row has pctOfBookDelta = currentPctOfBook - (priorPctOfBook ?? 0)', () => {
+    for (const r of CLUSTER_EVENT_ROWS) {
+      const expectedDelta =
+        r.currentPctOfBook - (r.priorPctOfBook ?? 0);
+      expect(r.pctOfBookDelta).toBeCloseTo(expectedDelta, 6);
+    }
+  });
+
+  it("'new' rows have null priorPctOfBook AND null priorQuarterAccessionNumber", () => {
+    for (const r of CLUSTER_EVENT_ROWS) {
+      if (r.clusterEventType === 'new') {
+        expect(r.priorPctOfBook).toBeNull();
+        expect(r.priorQuarterAccessionNumber).toBeNull();
+      }
+    }
+  });
+
+  it("'add' rows have non-null priorPctOfBook AND non-null priorQuarterAccessionNumber", () => {
+    for (const r of CLUSTER_EVENT_ROWS) {
+      if (r.clusterEventType === 'add') {
+        expect(r.priorPctOfBook).not.toBeNull();
+        expect(r.priorQuarterAccessionNumber).not.toBeNull();
+      }
+    }
   });
 });
 

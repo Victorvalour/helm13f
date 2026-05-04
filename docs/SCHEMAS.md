@@ -121,6 +121,12 @@ Observability only; one row per ingestion run. Powers `meta.freshness.lastIngest
 
 Every Query tool and the two Tier-1 Execute methods return the same envelope shape (built by `envelopeSchema()`). The runtime synthesises this single envelope into either `answer_with_evidence` or `evidence_only` per the client's `responseShape`. We do NOT ship two handlers.
 
+**Per-tool `rows` shape:**
+- Q1 / Q2 / Q3 — flat arrays of `newInitiationRowSchema` / `exitRowSchema` / `resizeRowSchema`.
+- Q4 / E1 — single object with five sub-arrays (`filerDeltaRowsSchema`).
+- Q5 — flat array of `clusterEventRowSchema` (calibration 7; not Q1-shape). Each row tags `clusterEventType: "new" | "add"` and exposes per-row `pctOfBookDelta`. The envelope-level invariant `clusterSignal.strength === sum(rows[i].pctOfBookDelta)` is asserted in the Q5 contract tests.
+- Q6 / E2 — single object with four buckets (`tickerDeltaRowsSchema`).
+
 Required fields:
 
 | Field | Purpose |
@@ -168,6 +174,7 @@ These are the six Phase 2 calibrations from the operator, with the file/line whe
 4. **Phase 6 wallet-drawdown watchpoint** — runbook only; recorded in `PRODUCT_CONTRACT.md §14`, will appear in `OPTIMIZATION_ARTIFACT.json.notes.walletWatchpoint` after Phase 6.
 5. **Pagination + deterministic sort** — `limit` input on every ticker- and filer-axis tool (defaults: 500 ticker-axis, 1000 filer-axis); `meta.{truncated, totalRowsAvailable, limitApplied}` required on every envelope. Asserted in `Calibration 5` test block.
 6. **§18 acceptance gate addition** — `PRODUCT_CONTRACT.md §18` checkbox: "Listing description on the Context developer dashboard auto-pushed by the Optimization Skill, includes Features / Try Asking (≥7 questions) / Agent Tips."
+7. **Q5 ClusterEventRow shape + cluster-strength-equals-sum invariant** — `clusterEventRowSchema` in `common.ts`, wired into Q5's `outputSchema` in `query.ts`. Row-level invariants (`new` ↔ null priors, `add` ↔ populated priors, `pctOfBookDelta = currentPctOfBook − (priorPctOfBook ?? 0)`) enforced in the parser/loader and asserted on the Q5 fixture in the `Calibration 7` test block. Envelope-level invariant `clusterSignal.strength === sum(rows[i].pctOfBookDelta)` asserted on a synthetic 5-member cluster (mix of new + add) to 6 decimal places.
 
 ---
 
@@ -181,6 +188,7 @@ These are the six Phase 2 calibrations from the operator, with the file/line whe
 - Calibration 2: every recognised `gapSignal` validates; an unrecognised token is rejected.
 - Calibration 3: `clusterSignal: null` validates; omitting `clusterSignal` is rejected.
 - Calibration 5: `truncated=true` envelope validates; omitting `truncated` or `totalRowsAvailable` is rejected.
+- Calibration 7: 5-member cluster fixture validates; unknown `clusterEventType` rejected; `strength` matches row-sum to 6 decimals; `new` rows have null priors and `add` rows have populated priors; `pctOfBookDelta = currentPctOfBook − (priorPctOfBook ?? 0)` for every row.
 
 ---
 

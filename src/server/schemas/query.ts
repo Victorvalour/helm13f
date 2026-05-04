@@ -14,6 +14,7 @@ import {
   newInitiationRowSchema,
   exitRowSchema,
   resizeRowSchema,
+  clusterEventRowSchema,
   tickerDeltaRowsSchema,
   rowsArraySchema,
   cikSchema,
@@ -241,10 +242,17 @@ export const Q4 = {
 // =====================================================================
 // Q5 — query_superinvestor_cluster_on_ticker
 // =====================================================================
+//
+// Q5 ships its own row shape (ClusterEventRow, calibration 7) rather than
+// reusing the Q1 newInitiationRowSchema, because cluster members may be
+// either 'new' or 'add' events and forcing 'add' members into a sharesNew
+// field is semantically lossy. The envelope-level invariant
+// clusterSignal.strength === sum(rows[i].pctOfBookDelta) is enforced in the
+// query handler and asserted in the contract test suite.
 export const Q5 = {
   name: 'query_superinvestor_cluster_on_ticker',
   description:
-    "Did a cluster of well-known managers cluster-buy $TICKER in last quarter's 13Fs? Returns the cluster signal (tier weak/notable/strong, member count, combined book-weight strength) plus per-member rows. A cluster requires 3+ superinvestors with new or add events on the ticker.",
+    "Did a cluster of well-known managers cluster-buy $TICKER in last quarter's 13Fs? Returns the cluster signal (tier weak/notable/strong, member count, combined book-weight strength) plus per-member rows distinguishing new initiations from material adds. A cluster requires 3+ superinvestors with new or add events on the ticker.",
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -264,8 +272,8 @@ export const Q5 = {
   },
   outputSchema: envelopeSchema(
     rowsArraySchema(
-      newInitiationRowSchema,
-      "Cluster member rows (Q1-shape). For 'add' members, sharesNew represents the position size attributable to the cluster event; precise pctOfBookDelta math is captured in clusterSignal.strength.",
+      clusterEventRowSchema,
+      "Cluster-member rows. Each row's clusterEventType discriminates 'new' vs 'add'; sharesAttributed is the increment attributed to the cluster event (full position for 'new'; currentShares - priorShares for 'add'). Sum of rows[].pctOfBookDelta MUST equal clusterSignal.strength.",
     ),
   ),
   _meta: intelligenceMeta('Cluster detection across the curated superinvestor roster.'),

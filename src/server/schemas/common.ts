@@ -411,6 +411,91 @@ export const resizeRowSchema = {
   },
 } as const;
 
+// Q5 cluster-event row (calibration 7).
+//
+// A semantically distinct row shape for cluster members, supporting both
+// "new" initiations and "add"-type cluster events without forcing add-events
+// into a sharesNew field.
+//
+// Invariants (enforced in parser/loader; documented here):
+//   - clusterEventType="new"  ↔  priorPctOfBook IS NULL  ↔  priorQuarterAccessionNumber IS NULL
+//   - clusterEventType="add"  ↔  priorPctOfBook is a number AND priorQuarterAccessionNumber is set
+//   - pctOfBookDelta === currentPctOfBook - (priorPctOfBook ?? 0)
+//   - clusterSignal.strength === sum_over_rows(pctOfBookDelta)  (envelope-level)
+export const clusterEventRowSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'filerCIK',
+    'filerName',
+    'filerDisplayName',
+    'isSuperinvestor',
+    'superinvestorTier',
+    'primaryStrategy',
+    'ticker',
+    'issuerName',
+    'cusip',
+    'convictionTier',
+    'clusterEventType',
+    'sharesAttributed',
+    'priorPctOfBook',
+    'currentPctOfBook',
+    'pctOfBookDelta',
+    'priorQuarterAccessionNumber',
+    'currentQuarterAccessionNumber',
+    'sourceURL',
+    'filedAt',
+  ],
+  properties: {
+    ...filerIdentityProps,
+    ...issuerIdentityProps,
+    convictionTier: {
+      type: 'string',
+      enum: [...Enums.convictionTier],
+      description:
+        "Filer's CURRENT-quarter conviction tier on this position (post-event). Derived from currentPctOfBook.",
+    },
+    clusterEventType: {
+      type: 'string',
+      enum: ['new', 'add'],
+      description:
+        "'new' if this is a fresh initiation; 'add' if the filer increased an existing position by ≥25% (qualifying as a material add).",
+    },
+    sharesAttributed: {
+      type: 'integer',
+      minimum: 0,
+      description:
+        "Shares (or principal amount) attributable to the cluster event. For 'new', this is the full new position size (= currentShares). For 'add', this is currentShares - priorShares (the increase).",
+      examples: [404057, 250000],
+    },
+    priorPctOfBook: {
+      type: ['number', 'null'],
+      minimum: 0,
+      maximum: 1,
+      description:
+        "Prior-quarter conviction (decimal in [0, 1]). NULL when clusterEventType='new'. Required when clusterEventType='add'.",
+      examples: [null, 0.0028],
+    },
+    currentPctOfBook: pctOfBookSchema,
+    pctOfBookDelta: {
+      type: 'number',
+      minimum: 0,
+      maximum: 1,
+      description:
+        "currentPctOfBook - (priorPctOfBook ?? 0). Always non-negative for cluster events (cluster includes only new/add). Decimal; example 0.0022 ≈ +0.22pp of book. Aggregated across rows it must equal clusterSignal.strength (envelope-level invariant).",
+      examples: [0.0018, 0.005, 0.025],
+    },
+    priorQuarterAccessionNumber: {
+      type: ['string', 'null'],
+      pattern: Patterns.accession,
+      description:
+        "Prior-quarter accession number. NULL when clusterEventType='new'. Required when clusterEventType='add' (proves the prior-quarter baseline).",
+    },
+    currentQuarterAccessionNumber: accessionSchema,
+    ...provenanceProps,
+  },
+} as const;
+
 // Q4 / E1 unchanged-row: lighter shape (no per-row provenance).
 export const unchangedRowSchema = {
   type: 'object',
