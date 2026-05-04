@@ -10,7 +10,6 @@ import {
   envelopeSchema,
   filerDeltaRowsSchema,
   tickerDeltaRowsSchema,
-  rowsArraySchema,
   superinvestorRowSchema,
   quarterRowSchema,
   filingHoldingRowSchema,
@@ -63,11 +62,13 @@ const lightMetaSchema = {
   properties: {
     asOf: {
       ...isoDateTimeSchema,
-      description: 'Timestamp of the most recent successful ingestion run that informs this response.',
+      description:
+        'Timestamp of the most recent successful ingestion run that informs this response.',
     },
     truncated: {
       type: 'boolean',
-      description: 'True iff results were truncated by an input limit. Honest signal of incompleteness.',
+      description:
+        'True iff results were truncated by an input limit. Honest signal of incompleteness.',
     },
     totalRowsAvailable: {
       type: 'integer',
@@ -187,7 +188,8 @@ export const E3 = {
       },
       strategy: {
         type: 'string',
-        description: "Filter by primaryStrategy substring (case-insensitive). Example: 'value', 'event-driven'.",
+        description:
+          "Filter by primaryStrategy substring (case-insensitive). Example: 'value', 'event-driven'.",
       },
     },
   },
@@ -198,7 +200,8 @@ export const E3 = {
     properties: {
       rows: {
         type: 'array',
-        description: 'Roster entries matching the optional filter. Sorted by superinvestorTier then displayName.',
+        description:
+          'Roster entries matching the optional filter. Sorted by superinvestorTier then displayName.',
         items: superinvestorRowSchema,
       },
       meta: lightMetaSchema,
@@ -220,7 +223,8 @@ export const E4 = {
     properties: {
       filerCIK: {
         ...cikSchema,
-        description: 'Optional 10-digit padded CIK. When set, returns only quarters this filer has filed for.',
+        description:
+          'Optional 10-digit padded CIK. When set, returns only quarters this filer has filed for.',
       },
     },
   },
@@ -295,14 +299,15 @@ export const E5 = {
         type: ['string', 'null'],
         pattern: Patterns.accession,
         description:
-          "Accession of the amendment (13F-HR/A) that supersedes this filing, if any. Null when this is the active filing for its periodOfReport.",
+          'Accession of the amendment (13F-HR/A) that supersedes this filing, if any. Null when this is the active filing for its periodOfReport.',
       },
       periodOfReport: quarterEndSchema,
       filedAt: isoDateSchema,
       bookValueUSD: {
         type: 'integer',
         minimum: 0,
-        description: 'Total reported 13F book value in USD (cover-page tableValueTotal, normalised to dollars).',
+        description:
+          'Total reported 13F book value in USD (cover-page tableValueTotal, normalised to dollars).',
       },
       valueScale: {
         type: 'string',
@@ -313,7 +318,8 @@ export const E5 = {
       tableEntryTotal: {
         type: 'integer',
         minimum: 0,
-        description: 'Cover-page summaryPage.tableEntryTotal — count of raw <infoTable> rows in the InfoTable XML before our (cusip, putCall) aggregation. May exceed holdings.length.',
+        description:
+          'Cover-page summaryPage.tableEntryTotal — count of raw <infoTable> rows in the InfoTable XML before our (cusip, putCall) aggregation. May exceed holdings.length.',
       },
       primaryDocURL: sourceURLSchema,
       infoTableURL: sourceURLSchema,

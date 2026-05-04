@@ -26,7 +26,8 @@ export const Patterns = {
   // obvious garbage but doesn't reject e.g. -02-29.
   isoQuarterEnd: '^[0-9]{4}-(03-31|06-30|09-30|12-31)$',
   // ISO 8601 datetime with offset.
-  isoDateTime: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})$',
+  isoDateTime:
+    '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})$',
   // Ticker: 1-16 chars, uppercase letters, digits, dot, hyphen
   // (e.g. "BRK-B", "BF.B"). Permissive on purpose.
   ticker: '^[A-Z0-9.\\-]{1,16}$',
@@ -77,16 +78,14 @@ export const cikSchema = {
 export const accessionSchema = {
   type: 'string',
   pattern: Patterns.accession,
-  description:
-    "SEC filing accession number with dashes (10-2-6). Example: '0001193125-26-054580'.",
+  description: "SEC filing accession number with dashes (10-2-6). Example: '0001193125-26-054580'.",
   examples: ['0001193125-26-054580'],
 } as const;
 
 export const cusipSchema = {
   type: 'string',
   pattern: Patterns.cusip,
-  description:
-    "9-character uppercase alphanumeric CUSIP. Example: '037833100' (Apple Inc.).",
+  description: "9-character uppercase alphanumeric CUSIP. Example: '037833100' (Apple Inc.).",
   examples: ['037833100', '02005N100'],
 } as const;
 
@@ -133,7 +132,7 @@ export const pctOfBookSchema = {
   minimum: 0,
   maximum: 1,
   description:
-    'Fraction of the filer\'s 13F book attributable to this position. Decimal in [0, 1] with up to 4 decimal places (5% = 0.0500). NOT a percentage; synthesisers format as % at the prose layer.',
+    "Fraction of the filer's 13F book attributable to this position. Decimal in [0, 1] with up to 4 decimal places (5% = 0.0500). NOT a percentage; synthesisers format as % at the prose layer.",
   examples: [0.0018, 0.0432, 0.12],
 } as const;
 
@@ -141,10 +140,8 @@ export const sourceURLSchema = {
   type: 'string',
   format: 'uri',
   description:
-    "Full SEC EDGAR URL pointing to the source XML for this fact (cover page or InfoTable). Always under https://www.sec.gov/Archives/edgar/data/...",
-  examples: [
-    'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
-  ],
+    'Full SEC EDGAR URL pointing to the source XML for this fact (cover page or InfoTable). Always under https://www.sec.gov/Archives/edgar/data/...',
+  examples: ['https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml'],
 } as const;
 
 // ---------- Common composite fragments ----------
@@ -255,7 +252,7 @@ export const newInitiationRowSchema = {
       type: 'string',
       enum: [...Enums.convictionTier],
       description:
-        "Deterministic tier from pctOfBook: core (>=5%), meaningful (1-5%), starter (0.25-1%), scout (<0.25%). Boundaries: exactly 0.01->meaningful, exactly 0.05->core.",
+        'Deterministic tier from pctOfBook: core (>=5%), meaningful (1-5%), starter (0.25-1%), scout (<0.25%). Boundaries: exactly 0.01->meaningful, exactly 0.05->core.',
     },
     bookValueUSD: {
       type: 'integer',
@@ -299,7 +296,8 @@ export const exitRowSchema = {
     sharesExited: {
       type: 'integer',
       minimum: 0,
-      description: 'Shares (or principal amount) the filer held the prior quarter and no longer holds.',
+      description:
+        'Shares (or principal amount) the filer held the prior quarter and no longer holds.',
       examples: [1000000],
     },
     priorValueUSD: {
@@ -326,7 +324,7 @@ export const exitRowSchema = {
     currentQuarterAccessionNumber: {
       ...accessionSchema,
       description:
-        "Accession of the current-quarter filing where the position is now absent. References the filing whose absence proves the exit.",
+        'Accession of the current-quarter filing where the position is now absent. References the filing whose absence proves the exit.',
     },
     ...provenanceProps,
   },
@@ -482,7 +480,7 @@ export const clusterEventRowSchema = {
       minimum: 0,
       maximum: 1,
       description:
-        "currentPctOfBook - (priorPctOfBook ?? 0). Always non-negative for cluster events (cluster includes only new/add). Decimal; example 0.0022 ≈ +0.22pp of book. Aggregated across rows it must equal clusterSignal.strength (envelope-level invariant).",
+        'currentPctOfBook - (priorPctOfBook ?? 0). Always non-negative for cluster events (cluster includes only new/add). Decimal; example 0.0022 ≈ +0.22pp of book. Aggregated across rows it must equal clusterSignal.strength (envelope-level invariant).',
       examples: [0.0018, 0.005, 0.025],
     },
     priorQuarterAccessionNumber: {
@@ -543,7 +541,8 @@ export const filerDeltaRowsSchema = {
     },
     filerDisplayName: {
       type: ['string', 'null'],
-      description: 'Friendlier display name from roster, or null when filer is not in the curated roster.',
+      description:
+        'Friendlier display name from roster, or null when filer is not in the curated roster.',
     },
     currentQuarter: quarterEndSchema,
     priorQuarter: quarterEndSchema,
@@ -559,28 +558,32 @@ export const filerDeltaRowsSchema = {
     },
     newInitiations: {
       type: 'array',
-      description: 'Positions present in current quarter but not in prior. Sorted by pctOfBook desc.',
+      description:
+        'Positions present in current quarter but not in prior. Sorted by pctOfBook desc.',
       items: newInitiationRowSchema,
     },
     exits: {
       type: 'array',
-      description: 'Positions present in prior quarter but not in current. Sorted by priorPctOfBook desc.',
+      description:
+        'Positions present in prior quarter but not in current. Sorted by priorPctOfBook desc.',
       items: exitRowSchema,
     },
     addedTo: {
       type: 'array',
-      description: 'Positions where currentShares > priorShares*1.25. Sorted by currentPctOfBook desc.',
+      description:
+        'Positions where currentShares > priorShares*1.25. Sorted by currentPctOfBook desc.',
       items: resizeRowSchema,
     },
     trimmedFrom: {
       type: 'array',
-      description: 'Positions where currentShares < priorShares*0.75. Sorted by priorPctOfBook desc.',
+      description:
+        'Positions where currentShares < priorShares*0.75. Sorted by priorPctOfBook desc.',
       items: resizeRowSchema,
     },
     unchanged: {
       type: 'array',
       description:
-        "Positions held with shares within ±25% of the prior quarter. Compact shape (no provenance fields). Included only when input.includeUnchanged=true.",
+        'Positions held with shares within ±25% of the prior quarter. Compact shape (no provenance fields). Included only when input.includeUnchanged=true.',
       items: unchangedRowSchema,
     },
   },
@@ -659,8 +662,7 @@ export const superinvestorRowSchema = {
     },
     aliases: {
       type: 'array',
-      description:
-        'Names and nicknames the fuzzy resolver should accept for this filer.',
+      description: 'Names and nicknames the fuzzy resolver should accept for this filer.',
       items: {
         type: 'string',
         description: "Alias string, e.g. 'Buffett' or 'Warren Buffett'.",
@@ -712,7 +714,7 @@ export const quarterRowSchema = {
     isCurrentSeason: {
       type: 'boolean',
       description:
-        "True iff this is the most recent quarter and we are still inside its 45-day filing window.",
+        'True iff this is the most recent quarter and we are still inside its 45-day filing window.',
     },
     seasonStatus: {
       type: 'string',
@@ -722,11 +724,11 @@ export const quarterRowSchema = {
     },
     earliestFiledAt: {
       ...isoDateSchema,
-      description: "Earliest filed_at date observed for this periodOfReport.",
+      description: 'Earliest filed_at date observed for this periodOfReport.',
     },
     latestFiledAt: {
       ...isoDateSchema,
-      description: "Latest filed_at date observed for this periodOfReport.",
+      description: 'Latest filed_at date observed for this periodOfReport.',
     },
   },
 } as const;
@@ -825,7 +827,8 @@ const clusterSignalSchema = {
   properties: {
     detected: {
       type: 'boolean',
-      description: 'True iff at least 3 superinvestors had a "new" or "add" event on the ticker in this quarter.',
+      description:
+        'True iff at least 3 superinvestors had a "new" or "add" event on the ticker in this quarter.',
     },
     tier: {
       type: ['string', 'null'],
@@ -971,7 +974,8 @@ const viewSchema = {
     kind: {
       type: 'string',
       enum: [...Enums.viewKind],
-      description: "Render hint for the Context app: 'table' | 'leaderboard' | 'timeseries' | 'summary'.",
+      description:
+        "Render hint for the Context app: 'table' | 'leaderboard' | 'timeseries' | 'summary'.",
     },
     primaryColumn: {
       type: 'string',
@@ -1028,7 +1032,7 @@ const metaSchema = {
     truncated: {
       type: 'boolean',
       description:
-        "True iff rows were truncated by the input limit. Honest signal of incompleteness, NOT an error (calibration 5).",
+        'True iff rows were truncated by the input limit. Honest signal of incompleteness, NOT an error (calibration 5).',
     },
     totalRowsAvailable: {
       type: 'integer',
@@ -1081,7 +1085,10 @@ export function envelopeSchema<T extends Record<string, unknown>>(rowsSchema: T)
 }
 
 // Convenience: an array-of-rows wrapper for tools whose `rows` is a flat list.
-export function rowsArraySchema<T extends Record<string, unknown>>(itemSchema: T, description: string) {
+export function rowsArraySchema<T extends Record<string, unknown>>(
+  itemSchema: T,
+  description: string,
+) {
   return {
     type: 'array',
     description,

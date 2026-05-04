@@ -7,8 +7,6 @@
 // the dual-surface value, which is what we publish here.
 
 import {
-  Enums,
-  Patterns,
   envelopeSchema,
   filerDeltaRowsSchema,
   newInitiationRowSchema,
@@ -17,10 +15,8 @@ import {
   clusterEventRowSchema,
   tickerDeltaRowsSchema,
   rowsArraySchema,
-  cikSchema,
   tickerSchema,
   quarterEndSchema,
-  pctOfBookSchema,
 } from './common.js';
 
 // Reusable input fragments
@@ -77,7 +73,7 @@ export const Q1 = {
       includeNonSuperinvestors: {
         type: 'boolean',
         description:
-          "When true, includes non-roster filers in addition to curated superinvestors. Default false (most users want the curated signal).",
+          'When true, includes non-roster filers in addition to curated superinvestors. Default false (most users want the curated signal).',
         default: false,
       },
       limit: {
@@ -86,14 +82,14 @@ export const Q1 = {
         maximum: 5000,
         default: 500,
         description:
-          "Maximum rows returned. Default 500. Rows are sorted by pctOfBook desc, so a limit returns the most material movers first. meta.truncated and meta.totalRowsAvailable signal whether truncation occurred.",
+          'Maximum rows returned. Default 500. Rows are sorted by pctOfBook desc, so a limit returns the most material movers first. meta.truncated and meta.totalRowsAvailable signal whether truncation occurred.',
       },
     },
   },
   outputSchema: envelopeSchema(
     rowsArraySchema(
       newInitiationRowSchema,
-      "Filers who initiated this position last quarter, sorted by pctOfBook desc.",
+      'Filers who initiated this position last quarter, sorted by pctOfBook desc.',
     ),
   ),
   _meta: intelligenceMeta('One row per filer who initiated $TICKER last quarter.'),
@@ -118,7 +114,7 @@ export const Q2 = {
         minimum: 0,
         maximum: 1,
         description:
-          "Minimum prior-quarter pctOfBook filter. Useful to surface only meaningful exits (e.g. 0.01 = exits of >=1%-of-book positions).",
+          'Minimum prior-quarter pctOfBook filter. Useful to surface only meaningful exits (e.g. 0.01 = exits of >=1%-of-book positions).',
         examples: [0.01],
       },
       includeNonSuperinvestors: {
@@ -210,7 +206,7 @@ export const Q4 = {
       currentQuarter: {
         ...quarterEndSchema,
         description:
-          "Optional periodOfReport for the current side of the delta. Default: most recent quarter the filer has filed for.",
+          'Optional periodOfReport for the current side of the delta. Default: most recent quarter the filer has filed for.',
       },
       priorQuarter: {
         ...quarterEndSchema,
@@ -285,7 +281,7 @@ export const Q5 = {
 export const Q6 = {
   name: 'query_full_ticker_delta_picture',
   description:
-    "Full delta picture on $TICKER for last quarter — new buys, exits, big adds, big trims, all weighted by conviction. Composite of Q1+Q2+Q3 in one structured envelope. Rows are bucketed by deltaType.",
+    'Full delta picture on $TICKER for last quarter — new buys, exits, big adds, big trims, all weighted by conviction. Composite of Q1+Q2+Q3 in one structured envelope. Rows are bucketed by deltaType.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,

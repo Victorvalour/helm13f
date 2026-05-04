@@ -52,17 +52,14 @@ const EVIDENCE_FACT = {
   claim: 'Berkshire initiated POOL with 0.18% of book',
   filerCIK: '0001067983',
   accessionNumber: '0001193125-26-054580',
-  sourceURL:
-    'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
+  sourceURL: 'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
   filedAt: '2026-02-17',
 };
 
 const COMMON_ENVELOPE_FIELDS = {
   evidence: {
     facts: [EVIDENCE_FACT],
-    sourceRefs: [
-      'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
-    ],
+    sourceRefs: ['https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml'],
     assumptions: [
       'Long US equity disclosures only; 13F-HR does not include short positions or 13D/13G holdings.',
     ],
@@ -127,8 +124,7 @@ const Q1_NEW_INITIATION_ROW = {
   convictionTier: 'starter',
   bookValueUSD: 274160086701,
   currentQuarterAccessionNumber: '0001193125-26-054580',
-  sourceURL:
-    'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
+  sourceURL: 'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
   filedAt: '2026-02-17',
 };
 
@@ -144,8 +140,7 @@ const Q2_EXIT_ROW = {
   priorBookValueUSD: 261000000000,
   priorQuarterAccessionNumber: '0001193125-25-282901',
   currentQuarterAccessionNumber: '0001193125-26-054580',
-  sourceURL:
-    'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
+  sourceURL: 'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
   filedAt: '2026-02-17',
 };
 
@@ -165,8 +160,7 @@ const Q3_RESIZE_ROW = {
   currentBookValueUSD: 274160086701,
   priorQuarterAccessionNumber: '0001193125-25-282901',
   currentQuarterAccessionNumber: '0001193125-26-054580',
-  sourceURL:
-    'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
+  sourceURL: 'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
   filedAt: '2026-02-17',
 };
 
@@ -220,8 +214,7 @@ const CLUSTER_EVENT_ROWS = [
     pctOfBookDelta: 0.0018,
     priorQuarterAccessionNumber: null,
     currentQuarterAccessionNumber: '0001193125-26-054580',
-    sourceURL:
-      'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
+    sourceURL: 'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
     filedAt: '2026-02-17',
   },
   // well-known 'add'
@@ -243,8 +236,7 @@ const CLUSTER_EVENT_ROWS = [
     pctOfBookDelta: 0.005,
     priorQuarterAccessionNumber: '0001649339-25-000003',
     currentQuarterAccessionNumber: '0001649339-26-000003',
-    sourceURL:
-      'https://www.sec.gov/Archives/edgar/data/1649339/000164933926000003/holdings.xml',
+    sourceURL: 'https://www.sec.gov/Archives/edgar/data/1649339/000164933926000003/holdings.xml',
     filedAt: '2026-02-14',
   },
   // legendary 'new'
@@ -262,12 +254,11 @@ const CLUSTER_EVENT_ROWS = [
     clusterEventType: 'new',
     sharesAttributed: 1200000,
     priorPctOfBook: null,
-    currentPctOfBook: 0.0250,
-    pctOfBookDelta: 0.0250,
+    currentPctOfBook: 0.025,
+    pctOfBookDelta: 0.025,
     priorQuarterAccessionNumber: null,
     currentQuarterAccessionNumber: '0001336528-26-000004',
-    sourceURL:
-      'https://www.sec.gov/Archives/edgar/data/1336528/000133652826000004/holdings.xml',
+    sourceURL: 'https://www.sec.gov/Archives/edgar/data/1336528/000133652826000004/holdings.xml',
     filedAt: '2026-02-13',
   },
   // notable 'add'
@@ -289,8 +280,7 @@ const CLUSTER_EVENT_ROWS = [
     pctOfBookDelta: 0.0054,
     priorQuarterAccessionNumber: '0001029160-25-000005',
     currentQuarterAccessionNumber: '0001029160-26-000005',
-    sourceURL:
-      'https://www.sec.gov/Archives/edgar/data/1029160/000102916026000005/holdings.xml',
+    sourceURL: 'https://www.sec.gov/Archives/edgar/data/1029160/000102916026000005/holdings.xml',
     filedAt: '2026-02-12',
   },
   // notable 'new'
@@ -308,22 +298,18 @@ const CLUSTER_EVENT_ROWS = [
     clusterEventType: 'new',
     sharesAttributed: 850000,
     priorPctOfBook: null,
-    currentPctOfBook: 0.0110,
-    pctOfBookDelta: 0.0110,
+    currentPctOfBook: 0.011,
+    pctOfBookDelta: 0.011,
     priorQuarterAccessionNumber: null,
     currentQuarterAccessionNumber: '0001113169-26-000007',
-    sourceURL:
-      'https://www.sec.gov/Archives/edgar/data/1113169/000111316926000007/holdings.xml',
+    sourceURL: 'https://www.sec.gov/Archives/edgar/data/1113169/000111316926000007/holdings.xml',
     filedAt: '2026-02-11',
   },
 ];
 
 // Sum of pctOfBookDelta across the 5 rows above:
 // 0.0018 + 0.0050 + 0.0250 + 0.0054 + 0.0110 = 0.0482
-const CLUSTER_ROWS_STRENGTH_SUM = CLUSTER_EVENT_ROWS.reduce(
-  (acc, r) => acc + r.pctOfBookDelta,
-  0,
-);
+const CLUSTER_ROWS_STRENGTH_SUM = CLUSTER_EVENT_ROWS.reduce((acc, r) => acc + r.pctOfBookDelta, 0);
 
 const CLUSTER_SIGNAL_DETECTED = {
   detected: true,
@@ -368,19 +354,13 @@ describe('Tool definitions — structural', () => {
     },
   );
 
-  it.each(ALL_TOOLS.map((t) => [t.name, t]))(
-    "%s: _meta.surface = 'both'",
-    (_name, tool) => {
-      expect(tool._meta.surface).toBe('both');
-    },
-  );
+  it.each(ALL_TOOLS.map((t) => [t.name, t]))("%s: _meta.surface = 'both'", (_name, tool) => {
+    expect(tool._meta.surface).toBe('both');
+  });
 
-  it.each(ALL_TOOLS.map((t) => [t.name, t]))(
-    '%s: _meta.queryEligible = true',
-    (_name, tool) => {
-      expect(tool._meta.queryEligible).toBe(true);
-    },
-  );
+  it.each(ALL_TOOLS.map((t) => [t.name, t]))('%s: _meta.queryEligible = true', (_name, tool) => {
+    expect(tool._meta.queryEligible).toBe(true);
+  });
 
   it.each(ALL_TOOLS.map((t) => [t.name, t]))(
     "%s: _meta.latencyClass = 'instant'",
@@ -470,7 +450,7 @@ describe('Q5 query_superinvestor_cluster_on_ticker — outputSchema validates sy
     expect(validate(env)).toBe(true);
   });
 
-  it("rejects an unknown clusterEventType value", () => {
+  it('rejects an unknown clusterEventType value', () => {
     const badRow = { ...CLUSTER_EVENT_ROWS[0], clusterEventType: 'trim' };
     const env = makeQueryEnvelope([badRow], { clusterSignal: CLUSTER_SIGNAL_DETECTED });
     expect(validate(env)).toBe(false);
@@ -483,17 +463,13 @@ describe('Q5 query_superinvestor_cluster_on_ticker — outputSchema validates sy
 // ---------------------------------------------------------------------
 describe('Calibration 7 — clusterSignal.strength equals sum of row pctOfBookDeltas', () => {
   it('synthetic 5-member cluster: strength matches row sum to 6 decimal places', () => {
-    const sumFromRows = CLUSTER_EVENT_ROWS.reduce(
-      (acc, r) => acc + r.pctOfBookDelta,
-      0,
-    );
+    const sumFromRows = CLUSTER_EVENT_ROWS.reduce((acc, r) => acc + r.pctOfBookDelta, 0);
     expect(CLUSTER_SIGNAL_DETECTED.strength).toBeCloseTo(sumFromRows, 6);
   });
 
   it('mix of new + add events: each row has pctOfBookDelta = currentPctOfBook - (priorPctOfBook ?? 0)', () => {
     for (const r of CLUSTER_EVENT_ROWS) {
-      const expectedDelta =
-        r.currentPctOfBook - (r.priorPctOfBook ?? 0);
+      const expectedDelta = r.currentPctOfBook - (r.priorPctOfBook ?? 0);
       expect(r.pctOfBookDelta).toBeCloseTo(expectedDelta, 6);
     }
   });
@@ -627,8 +603,7 @@ describe('E5 get_filing — outputSchema validates synthetic payload', () => {
       tableEntryTotal: 110,
       primaryDocURL:
         'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/primary_doc.xml',
-      infoTableURL:
-        'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
+      infoTableURL: 'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/50240.xml',
       holdings: [
         {
           ticker: null, // CUSIP-not-yet-resolved is allowed
@@ -661,7 +636,7 @@ describe('E5 get_filing — outputSchema validates synthetic payload', () => {
 // =====================================================================
 
 describe('Calibration 1 — isSuperinvestor × superinvestorTier invariant', () => {
-  it("isSuperinvestor=true ↔ superinvestorTier non-null fixture is consistent", () => {
+  it('isSuperinvestor=true ↔ superinvestorTier non-null fixture is consistent', () => {
     expect(SUPERINVESTOR_ROW.isSuperinvestor).toBe(true);
     expect(SUPERINVESTOR_ROW.superinvestorTier).not.toBeNull();
   });
