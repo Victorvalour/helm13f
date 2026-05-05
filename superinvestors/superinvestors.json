@@ -1,0 +1,119 @@
+{
+  "$schema": "./schema.json",
+  "sourceNotes": "Curated seed roster for Helm13F. Each entry's CIK was verified against data.sec.gov/submissions/CIK{padded}.json. Aliases include common nicknames the fuzzy resolver should accept. Tier is qualitative (legendary | well-known | notable). The full ~150 entries land via the maintenance script in superinvestors/scripts/.",
+  "lastVerifiedAt": "2026-05-04",
+  "entries": [
+    {
+      "cik": "0001067983",
+      "displayName": "Berkshire Hathaway",
+      "edgarName": "BERKSHIRE HATHAWAY INC",
+      "aliases": ["Buffett", "Warren Buffett", "Berkshire", "Charlie Munger"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "value"
+    },
+    {
+      "cik": "0001649339",
+      "displayName": "Scion Asset Management",
+      "edgarName": "SCION ASSET MANAGEMENT, LLC",
+      "aliases": ["Burry", "Michael Burry", "Scion"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "value"
+    },
+    {
+      "cik": "0001336528",
+      "displayName": "Pershing Square",
+      "edgarName": "Pershing Square Capital Management, L.P.",
+      "aliases": ["Ackman", "Bill Ackman", "Pershing"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "event-driven"
+    },
+    {
+      "cik": "0001061768",
+      "displayName": "Baupost Group",
+      "edgarName": "BAUPOST GROUP LLC/MA",
+      "aliases": ["Klarman", "Seth Klarman", "Baupost"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "value"
+    },
+    {
+      "cik": "0001079114",
+      "displayName": "Greenlight Capital",
+      "edgarName": "GREENLIGHT CAPITAL INC",
+      "aliases": ["Einhorn", "David Einhorn", "Greenlight"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "value"
+    },
+    {
+      "cik": "0001040273",
+      "displayName": "Third Point",
+      "edgarName": "Third Point LLC",
+      "aliases": ["Loeb", "Dan Loeb", "Third Point"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "event-driven"
+    },
+    {
+      "cik": "0001656456",
+      "displayName": "Appaloosa",
+      "edgarName": "Appaloosa LP",
+      "aliases": ["Tepper", "David Tepper", "Appaloosa"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "macro"
+    },
+    {
+      "cik": "0001167483",
+      "displayName": "Tiger Global",
+      "edgarName": "TIGER GLOBAL MANAGEMENT LLC",
+      "aliases": ["Coleman", "Chase Coleman", "Tiger"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "growth"
+    },
+    {
+      "cik": "0001037389",
+      "displayName": "Renaissance Technologies",
+      "edgarName": "RENAISSANCE TECHNOLOGIES LLC",
+      "aliases": ["RenTec", "Renaissance", "Simons", "Jim Simons"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "quant"
+    },
+    {
+      "cik": "0001423053",
+      "displayName": "Citadel",
+      "edgarName": "CITADEL ADVISORS LLC",
+      "aliases": ["Griffin", "Ken Griffin", "Citadel"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "multi-strategy"
+    },
+    {
+      "cik": "0001350694",
+      "displayName": "Bridgewater Associates",
+      "edgarName": "Bridgewater Associates, LP",
+      "aliases": ["Dalio", "Ray Dalio", "Bridgewater"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "macro"
+    },
+    {
+      "cik": "0001179392",
+      "displayName": "Two Sigma",
+      "edgarName": "TWO SIGMA INVESTMENTS, LP",
+      "aliases": ["Two Sigma", "Siegel", "Overdeck"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "quant"
+    },
+    {
+      "cik": "0001549575",
+      "displayName": "Pabrai Funds",
+      "edgarName": "Dalal Street, LLC",
+      "aliases": ["Pabrai", "Mohnish Pabrai", "Dalal Street"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "value"
+    },
+    {
+      "cik": "0000883965",
+      "displayName": "Weitz Investment Management",
+      "edgarName": "WEITZ INVESTMENT MANAGEMENT, INC.",
+      "aliases": ["Weitz", "Wally Weitz", "Weitz Funds"],
+      "superinvestorTier": "notable",
+      "primaryStrategy": "value"
+    }
+  ]
+}
