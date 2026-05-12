@@ -12,6 +12,7 @@ import {
 } from '../sources/openfigi/index.js';
 import { CusipTickerMapRepo } from '../db/repos/cusipTickerMap.js';
 import { FilerResolver, loadRoster } from '../resolution/index.js';
+import { NoopCache, RedisCache, type CacheProvider } from '../cache/index.js';
 import { QueryService } from './service/queryService.js';
 import { makeHandlers } from './handlers/index.js';
 import { buildMcpServer } from './mcp.js';
@@ -44,7 +45,12 @@ async function main(): Promise<void> {
   void new EdgarClient({ userAgent: edgarUserAgent });
   void cusipResolver; // referenced by the ingestion runner (separate process).
 
-  const svc = new QueryService({ db, resolver, rosterByCik });
+  // Hot cache: Redis when REDIS_URL set, otherwise a no-op pass-through
+  // (still correct, just no speedup).
+  const redisUrl = process.env['REDIS_URL'];
+  const cache: CacheProvider = redisUrl ? new RedisCache({ url: redisUrl }) : new NoopCache();
+
+  const svc = new QueryService({ db, resolver, rosterByCik, cache });
   const handlers = makeHandlers(svc);
   const app = buildHttpApp({
     buildServer: () => buildMcpServer({ handlers }),

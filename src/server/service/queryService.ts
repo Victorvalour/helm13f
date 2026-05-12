@@ -8,6 +8,7 @@ import type { Database, FilingRow, HoldingRow } from '../../db/index.js';
 import { FilersRepo, FilingsRepo, HoldingsRepo, IngestionLogRepo } from '../../db/index.js';
 import { classifyDelta, detectCluster, shareDeltaPct, type DeltaType } from '../../domain/index.js';
 import type { FilerResolver, RosterEntry } from '../../resolution/index.js';
+import { type CacheProvider, CACHE_TTL, NoopCache, buildCacheKey } from '../../cache/index.js';
 import {
   buildEnvelope,
   type BuiltEnvelope,
@@ -130,8 +131,75 @@ export interface QueryServiceDeps {
   db: Database;
   resolver: FilerResolver;
   rosterByCik: ReadonlyMap<string, RosterEntry>;
+  /** Optional hot cache (defaults to NoopCache). */
+  cache?: CacheProvider;
   /** Optional override for "now" (test injection). */
   now?: () => Date;
+}
+
+// ---------- E3/E4/E5 light-envelope output shapes ----------
+
+interface LightMeta {
+  asOf: string;
+  truncated: boolean;
+  totalRowsAvailable: number;
+  limitApplied: number | null;
+  notes: string | null;
+}
+
+export interface E3Output {
+  rows: Array<{
+    filerCIK: string;
+    displayName: string;
+    edgarName: string;
+    aliases: string[];
+    superinvestorTier: 'legendary' | 'well-known' | 'notable';
+    primaryStrategy: string | null;
+    lastFilingPeriodOfReport: string | null;
+    lastFilingAccessionNumber: string | null;
+  }>;
+  meta: LightMeta;
+}
+
+export interface E4Output {
+  rows: Array<{
+    periodOfReport: string;
+    filersIngestedCount: number;
+    isCurrentSeason: boolean;
+    seasonStatus: 'complete' | 'in_progress' | 'between_seasons';
+    earliestFiledAt: string;
+    latestFiledAt: string;
+  }>;
+  meta: LightMeta;
+}
+
+export interface E5Output {
+  accessionNumber: string;
+  filerCIK: string;
+  filerName: string;
+  form: '13F-HR' | '13F-HR/A';
+  isAmendment: boolean;
+  supersededByAccession: string | null;
+  periodOfReport: string;
+  filedAt: string;
+  bookValueUSD: number;
+  valueScale: 'USD' | 'USD_THOUSANDS';
+  tableEntryTotal: number;
+  primaryDocURL: string;
+  infoTableURL: string;
+  holdings: Array<{
+    ticker: string | null;
+    issuerName: string;
+    cusip: string;
+    titleOfClass: string;
+    shares: number;
+    valueUSD: number;
+    sshPrnamtType: 'SH' | 'PRN';
+    putCall: 'Put' | 'Call' | null;
+    pctOfBook: number;
+    convictionTier: 'core' | 'meaningful' | 'starter' | 'scout';
+  }>;
+  meta: LightMeta;
 }
 
 // ---------- QueryService ----------
@@ -140,19 +208,44 @@ export class QueryService {
   private readonly db: Database;
   private readonly resolver: FilerResolver;
   private readonly rosterByCik: ReadonlyMap<string, RosterEntry>;
+  private readonly cache: CacheProvider;
   private readonly now: () => Date;
 
   constructor(deps: QueryServiceDeps) {
     this.db = deps.db;
     this.resolver = deps.resolver;
     this.rosterByCik = deps.rosterByCik;
+    this.cache = deps.cache ?? new NoopCache();
     this.now = deps.now ?? (() => new Date());
+  }
+
+  /**
+   * TTL picker: when the caller pinned a specific quarter, the answer is
+   * historically stable → standard TTL. When omitted, the runtime resolves
+   * "latest" which moves between ingestion runs → short TTL.
+   */
+  private ttlFor(quarter: string | undefined): number {
+    return quarter === undefined ? CACHE_TTL.LATEST_MS : CACHE_TTL.STANDARD_MS;
   }
 
   // ------------------------------------------------------------
   // Q1 — query_new_initiations_in_ticker
   // ------------------------------------------------------------
-  async q1NewInitiations(input: {
+  q1NewInitiations(input: {
+    ticker: string;
+    quarter?: string;
+    minPctOfBook?: number;
+    includeNonSuperinvestors?: boolean;
+    limit?: number;
+  }): Promise<BuiltEnvelope<NewInitiationRow[]>> {
+    return this.cache.getOrCompute(
+      buildCacheKey('q1', input as Record<string, unknown>),
+      this.ttlFor(input.quarter),
+      () => this.q1NewInitiationsCompute(input),
+    );
+  }
+
+  private async q1NewInitiationsCompute(input: {
     ticker: string;
     quarter?: string;
     minPctOfBook?: number;
@@ -201,7 +294,21 @@ export class QueryService {
   // ------------------------------------------------------------
   // Q2 — query_exits_from_ticker
   // ------------------------------------------------------------
-  async q2Exits(input: {
+  q2Exits(input: {
+    ticker: string;
+    quarter?: string;
+    minPriorPctOfBook?: number;
+    includeNonSuperinvestors?: boolean;
+    limit?: number;
+  }): Promise<BuiltEnvelope<ExitRow[]>> {
+    return this.cache.getOrCompute(
+      buildCacheKey('q2', input as Record<string, unknown>),
+      this.ttlFor(input.quarter),
+      () => this.q2ExitsCompute(input),
+    );
+  }
+
+  private async q2ExitsCompute(input: {
     ticker: string;
     quarter?: string;
     minPriorPctOfBook?: number;
@@ -250,7 +357,22 @@ export class QueryService {
   // ------------------------------------------------------------
   // Q3 — query_material_resizes_in_ticker
   // ------------------------------------------------------------
-  async q3MaterialResizes(input: {
+  q3MaterialResizes(input: {
+    ticker: string;
+    quarter?: string;
+    minDeltaPct?: number;
+    direction?: 'add' | 'trim' | 'both';
+    includeNonSuperinvestors?: boolean;
+    limit?: number;
+  }): Promise<BuiltEnvelope<ResizeRow[]>> {
+    return this.cache.getOrCompute(
+      buildCacheKey('q3', input as Record<string, unknown>),
+      this.ttlFor(input.quarter),
+      () => this.q3MaterialResizesCompute(input),
+    );
+  }
+
+  private async q3MaterialResizesCompute(input: {
     ticker: string;
     quarter?: string;
     minDeltaPct?: number;
@@ -305,7 +427,28 @@ export class QueryService {
   // ------------------------------------------------------------
   // Q4 / E1 — filer dual-quarter delta
   // ------------------------------------------------------------
-  async q4FilerDelta(input: {
+  q4FilerDelta(input: {
+    filerNameOrCIK: string;
+    currentQuarter?: string;
+    priorQuarter?: string;
+    includeUnchanged?: boolean;
+    limit?: number;
+  }): Promise<
+    | { kind: 'envelope'; envelope: BuiltEnvelope<FilerDeltaRows> }
+    | {
+        kind: 'error';
+        errorCode: 'ambiguous_filer';
+        candidates: ResolverCandidatePublic[];
+      }
+  > {
+    return this.cache.getOrCompute(
+      buildCacheKey('q4', input as Record<string, unknown>),
+      this.ttlFor(input.currentQuarter),
+      () => this.q4FilerDeltaCompute(input),
+    );
+  }
+
+  private async q4FilerDeltaCompute(input: {
     filerNameOrCIK: string;
     currentQuarter?: string;
     priorQuarter?: string;
@@ -344,7 +487,21 @@ export class QueryService {
   }
 
   /** E1: same as Q4 but only accepts a CIK (no fuzzy resolution). */
-  async e1FilerDelta(input: {
+  e1FilerDelta(input: {
+    filerCIK: string;
+    currentQuarter?: string;
+    priorQuarter?: string;
+    includeUnchanged?: boolean;
+    limit?: number;
+  }): Promise<BuiltEnvelope<FilerDeltaRows>> {
+    return this.cache.getOrCompute(
+      buildCacheKey('e1', input as Record<string, unknown>),
+      this.ttlFor(input.currentQuarter),
+      () => this.e1FilerDeltaCompute(input),
+    );
+  }
+
+  private async e1FilerDeltaCompute(input: {
     filerCIK: string;
     currentQuarter?: string;
     priorQuarter?: string;
@@ -496,7 +653,19 @@ export class QueryService {
   // ------------------------------------------------------------
   // Q5 — query_superinvestor_cluster_on_ticker
   // ------------------------------------------------------------
-  async q5SuperinvestorCluster(input: {
+  q5SuperinvestorCluster(input: {
+    ticker: string;
+    quarter?: string;
+    limit?: number;
+  }): Promise<BuiltEnvelope<ClusterEventRow[]>> {
+    return this.cache.getOrCompute(
+      buildCacheKey('q5', input as Record<string, unknown>),
+      this.ttlFor(input.quarter),
+      () => this.q5SuperinvestorClusterCompute(input),
+    );
+  }
+
+  private async q5SuperinvestorClusterCompute(input: {
     ticker: string;
     quarter?: string;
     limit?: number;
@@ -608,7 +777,21 @@ export class QueryService {
   // ------------------------------------------------------------
   // Q6 / E2 — full ticker delta picture
   // ------------------------------------------------------------
-  async q6FullTickerDelta(input: {
+  q6FullTickerDelta(input: {
+    ticker: string;
+    quarter?: string;
+    minPctOfBook?: number;
+    includeNonSuperinvestors?: boolean;
+    limit?: number;
+  }): Promise<BuiltEnvelope<TickerDeltaRows>> {
+    return this.cache.getOrCompute(
+      buildCacheKey('q6', input as Record<string, unknown>),
+      this.ttlFor(input.quarter),
+      () => this.q6FullTickerDeltaCompute(input),
+    );
+  }
+
+  private async q6FullTickerDeltaCompute(input: {
     ticker: string;
     quarter?: string;
     minPctOfBook?: number;
@@ -710,28 +893,22 @@ export class QueryService {
   // E3 / E4 / E5 (light envelopes, not the rich Query envelope)
   // ------------------------------------------------------------
 
-  async e3ListSuperinvestors(input: {
+  e3ListSuperinvestors(input: {
     tier?: 'legendary' | 'well-known' | 'notable';
     strategy?: string;
-  }): Promise<{
-    rows: Array<{
-      filerCIK: string;
-      displayName: string;
-      edgarName: string;
-      aliases: string[];
-      superinvestorTier: 'legendary' | 'well-known' | 'notable';
-      primaryStrategy: string | null;
-      lastFilingPeriodOfReport: string | null;
-      lastFilingAccessionNumber: string | null;
-    }>;
-    meta: {
-      asOf: string;
-      truncated: boolean;
-      totalRowsAvailable: number;
-      limitApplied: number | null;
-      notes: string | null;
-    };
-  }> {
+  }): Promise<E3Output> {
+    return this.cache.getOrCompute(
+      buildCacheKey('e3', input as Record<string, unknown>),
+      // Roster moves on every ingestion run (last-filing pointers); short TTL.
+      CACHE_TTL.LATEST_MS,
+      () => this.e3ListSuperinvestorsCompute(input),
+    );
+  }
+
+  private async e3ListSuperinvestorsCompute(input: {
+    tier?: 'legendary' | 'well-known' | 'notable';
+    strategy?: string;
+  }): Promise<E3Output> {
     const repo = new FilersRepo(this.db);
     const filerRows = await repo.listSuperinvestors({
       ...(input.tier ? { tier: input.tier } : {}),
@@ -770,23 +947,15 @@ export class QueryService {
     };
   }
 
-  async e4ListQuartersAvailable(input: { filerCIK?: string }): Promise<{
-    rows: Array<{
-      periodOfReport: string;
-      filersIngestedCount: number;
-      isCurrentSeason: boolean;
-      seasonStatus: 'complete' | 'in_progress' | 'between_seasons';
-      earliestFiledAt: string;
-      latestFiledAt: string;
-    }>;
-    meta: {
-      asOf: string;
-      truncated: boolean;
-      totalRowsAvailable: number;
-      limitApplied: number | null;
-      notes: string | null;
-    };
-  }> {
+  e4ListQuartersAvailable(input: { filerCIK?: string }): Promise<E4Output> {
+    return this.cache.getOrCompute(
+      buildCacheKey('e4', input as Record<string, unknown>),
+      CACHE_TTL.LATEST_MS,
+      () => this.e4ListQuartersAvailableCompute(input),
+    );
+  }
+
+  private async e4ListQuartersAvailableCompute(input: { filerCIK?: string }): Promise<E4Output> {
     const where = input.filerCIK ? `WHERE filer_cik = $1` : '';
     const params = input.filerCIK ? [input.filerCIK] : [];
     const r = await this.db.query<{
@@ -832,40 +1001,17 @@ export class QueryService {
     };
   }
 
-  async e5GetFiling(input: { accessionNumber: string }): Promise<{
-    accessionNumber: string;
-    filerCIK: string;
-    filerName: string;
-    form: '13F-HR' | '13F-HR/A';
-    isAmendment: boolean;
-    supersededByAccession: string | null;
-    periodOfReport: string;
-    filedAt: string;
-    bookValueUSD: number;
-    valueScale: 'USD' | 'USD_THOUSANDS';
-    tableEntryTotal: number;
-    primaryDocURL: string;
-    infoTableURL: string;
-    holdings: Array<{
-      ticker: string | null;
-      issuerName: string;
-      cusip: string;
-      titleOfClass: string;
-      shares: number;
-      valueUSD: number;
-      sshPrnamtType: 'SH' | 'PRN';
-      putCall: 'Put' | 'Call' | null;
-      pctOfBook: number;
-      convictionTier: 'core' | 'meaningful' | 'starter' | 'scout';
-    }>;
-    meta: {
-      asOf: string;
-      truncated: boolean;
-      totalRowsAvailable: number;
-      limitApplied: number | null;
-      notes: string | null;
-    };
-  } | null> {
+  e5GetFiling(input: { accessionNumber: string }): Promise<E5Output | null> {
+    return this.cache.getOrCompute(
+      buildCacheKey('e5', input as Record<string, unknown>),
+      // A specific accession is immutable once superseded_by_accession lands;
+      // standard TTL is fine here.
+      CACHE_TTL.STANDARD_MS,
+      () => this.e5GetFilingCompute(input),
+    );
+  }
+
+  private async e5GetFilingCompute(input: { accessionNumber: string }): Promise<E5Output | null> {
     const filingsRepo = new FilingsRepo(this.db);
     const holdingsRepo = new HoldingsRepo(this.db);
     const filersRepo = new FilersRepo(this.db);

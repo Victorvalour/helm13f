@@ -440,3 +440,135 @@ describe('E5 get_filing', () => {
     expect(out?.valueScale).toBe('USD');
   });
 });
+
+// ------------------------------------------------------------
+// Step 10 — cache wiring
+// ------------------------------------------------------------
+
+import type { CacheProvider } from '../../src/cache/index.js';
+import { CACHE_TTL } from '../../src/cache/index.js';
+
+class RecordingCache implements CacheProvider {
+  public readonly calls: Array<{ key: string; ttlMs: number }> = [];
+  /** When set, the next getOrCompute returns this value without calling compute. */
+  public sticky: unknown;
+  getOrCompute<T>(key: string, ttlMs: number, compute: () => Promise<T>): Promise<T> {
+    this.calls.push({ key, ttlMs });
+    if (this.sticky !== undefined) return Promise.resolve(this.sticky as T);
+    return compute();
+  }
+  del(_key: string): Promise<void> {
+    return Promise.resolve();
+  }
+  delPrefix(_prefix: string): Promise<number> {
+    return Promise.resolve(0);
+  }
+  close(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+describe('QueryService — cache wiring', () => {
+  it('Q1 routes through cache.getOrCompute with namespaced key + standard TTL', async () => {
+    const cache = new RecordingCache();
+    const localDb = new StubDb();
+    localDb.on(/FROM filers WHERE filer_cik = \$1/i, { rows: [filerDbRow()] });
+    localDb.on(/SELECT MAX\(period_of_report\)/i, {
+      rows: [{ period_of_report: '2025-12-31' }],
+    });
+    localDb.on(/superseded_by_accession IS NULL[\s\S]*LIMIT 1/i, {
+      rows: [filingDbRow()],
+    });
+    localDb.on(/FROM ingestion_log/i, { rows: [] });
+    localDb.on(/SELECT COUNT\(DISTINCT filer_cik\)/i, {
+      rows: [{ count: '1' }],
+    });
+    localDb.on(/WHERE ticker = \$1/i, { rows: [] });
+    const localSvc = new QueryService({
+      db: localDb,
+      resolver: new FilerResolver(ROSTER),
+      rosterByCik: new Map(ROSTER.map((r) => [r.cik, r])),
+      cache,
+      now: () => new Date('2026-05-04T00:00:00Z'),
+    });
+    await localSvc.q1NewInitiations({ ticker: 'AAPL', quarter: '2025-12-31' });
+    expect(cache.calls).toHaveLength(1);
+    expect(cache.calls[0]?.key).toMatch(/^q1\|/);
+    expect(cache.calls[0]?.ttlMs).toBe(CACHE_TTL.STANDARD_MS);
+  });
+
+  it('Q1 uses LATEST_MS TTL when quarter is omitted', async () => {
+    const cache = new RecordingCache();
+    const localDb = new StubDb();
+    localDb.on(/FROM filers WHERE filer_cik = \$1/i, { rows: [filerDbRow()] });
+    localDb.on(/SELECT MAX\(period_of_report\)/i, {
+      rows: [{ period_of_report: '2025-12-31' }],
+    });
+    localDb.on(/superseded_by_accession IS NULL[\s\S]*LIMIT 1/i, {
+      rows: [filingDbRow()],
+    });
+    localDb.on(/FROM ingestion_log/i, { rows: [] });
+    localDb.on(/SELECT COUNT\(DISTINCT filer_cik\)/i, {
+      rows: [{ count: '1' }],
+    });
+    localDb.on(/WHERE ticker = \$1/i, { rows: [] });
+    const localSvc = new QueryService({
+      db: localDb,
+      resolver: new FilerResolver(ROSTER),
+      rosterByCik: new Map(ROSTER.map((r) => [r.cik, r])),
+      cache,
+      now: () => new Date('2026-05-04T00:00:00Z'),
+    });
+    await localSvc.q1NewInitiations({ ticker: 'AAPL' });
+    expect(cache.calls[0]?.ttlMs).toBe(CACHE_TTL.LATEST_MS);
+  });
+
+  it('sticky cache hit short-circuits compute (no DB calls)', async () => {
+    const cache = new RecordingCache();
+    cache.sticky = { stub: 'cached' };
+    const localDb = new StubDb(); // no recipes registered
+    const localSvc = new QueryService({
+      db: localDb,
+      resolver: new FilerResolver(ROSTER),
+      rosterByCik: new Map(ROSTER.map((r) => [r.cik, r])),
+      cache,
+      now: () => new Date('2026-05-04T00:00:00Z'),
+    });
+    const out = await localSvc.q1NewInitiations({ ticker: 'AAPL', quarter: '2025-12-31' });
+    expect(out).toEqual({ stub: 'cached' });
+    // No DB queries should have run — cache short-circuited.
+    expect(localDb.queries).toHaveLength(0);
+  });
+
+  it('E5 routes through cache with STANDARD_MS TTL (immutable accession)', async () => {
+    const cache = new RecordingCache();
+    const localDb = new StubDb();
+    localDb.on(/FROM filings WHERE accession_number = \$1/i, { rows: [] });
+    const localSvc = new QueryService({
+      db: localDb,
+      resolver: new FilerResolver(ROSTER),
+      rosterByCik: new Map(ROSTER.map((r) => [r.cik, r])),
+      cache,
+      now: () => new Date('2026-05-04T00:00:00Z'),
+    });
+    await localSvc.e5GetFiling({ accessionNumber: '0001193125-26-054580' });
+    expect(cache.calls).toHaveLength(1);
+    expect(cache.calls[0]?.key).toMatch(/^e5\|/);
+    expect(cache.calls[0]?.ttlMs).toBe(CACHE_TTL.STANDARD_MS);
+  });
+
+  it('E3 uses LATEST_MS TTL (roster last-filing pointers change each ingestion run)', async () => {
+    const cache = new RecordingCache();
+    const localDb = new StubDb();
+    localDb.on(/is_superinvestor = TRUE/i, { rows: [] });
+    const localSvc = new QueryService({
+      db: localDb,
+      resolver: new FilerResolver(ROSTER),
+      rosterByCik: new Map(ROSTER.map((r) => [r.cik, r])),
+      cache,
+      now: () => new Date('2026-05-04T00:00:00Z'),
+    });
+    await localSvc.e3ListSuperinvestors({});
+    expect(cache.calls[0]?.ttlMs).toBe(CACHE_TTL.LATEST_MS);
+  });
+});
