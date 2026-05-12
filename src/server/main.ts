@@ -2,7 +2,8 @@
 // Run via `pnpm start` (production) or `pnpm dev` (watch mode).
 
 import 'dotenv/config';
-import { createPgDatabase } from '../db/index.js';
+import { join } from 'node:path';
+import { createPgDatabase, migrate } from '../db/index.js';
 import { EdgarClient } from '../sources/edgar/index.js';
 import {
   CusipResolver,
@@ -25,6 +26,22 @@ async function main(): Promise<void> {
   if (!edgarUserAgent) throw new Error('EDGAR_USER_AGENT is required');
 
   const db = createPgDatabase({ connectionString: databaseUrl });
+
+  // Boot-migration: run pending migrations idempotently inside the
+  // deployed container, where the internal DNS for the Postgres plugin
+  // resolves. Removes the need for a separate `railway run pnpm migrate`
+  // step — and the migrations table dedupes so re-runs are safe.
+  if (process.env['SKIP_BOOT_MIGRATE'] !== 'true') {
+    console.log('boot: applying migrations...');
+    const applied = await migrate(db, {
+      dir: join(process.cwd(), 'migrations'),
+      logger: (e) => {
+        if (e.kind === 'apply') console.log(`  apply ${e.name ?? ''}`);
+      },
+    });
+    console.log(`boot: migrations done (${applied.length} applied)`);
+  }
+
   const roster = await loadRoster();
   const rosterByCik = new Map(roster.map((r) => [r.cik, r]));
   const resolver = new FilerResolver(roster);
