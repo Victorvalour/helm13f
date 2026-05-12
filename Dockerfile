@@ -9,18 +9,18 @@
 #   - `pnpm ingest:scheduled` → cron-triggered ingestion runner
 #   - `pnpm migrate`         → one-shot migrations (run pre-deploy)
 
-# syntax=docker/dockerfile:1.6
-
 FROM node:20-alpine AS base
 WORKDIR /app
 # pnpm via corepack (Node 20 ships it).
 RUN corepack enable && corepack prepare pnpm@10 --activate
 
-# ---- deps stage: cache-friendly install ----
+# ---- deps stage ----
+# Note: no `--mount=type=cache` here — Railway's Metal builder rejects
+# anonymous BuildKit cache mounts (requires a cacheKey prefix on `id`).
+# The install is fast enough without it for our deploy cadence.
 FROM base AS deps
 COPY package.json pnpm-lock.yaml .npmrc ./
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # ---- runtime stage ----
 FROM base AS runtime

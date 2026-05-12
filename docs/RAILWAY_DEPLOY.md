@@ -34,22 +34,34 @@ railway init                       # in the helm13f repo root
 
 This creates a Railway project with no services yet.
 
-## Step 2 — add Postgres + Redis plugins
+## Step 2 — add Postgres + Redis databases
 
+The Railway CLI's `add` flags have changed over time. Either path works:
+
+**CLI path (current syntax):**
 ```
-railway add --plugin postgres
-railway add --plugin redis
+railway add --database postgres
+railway add --database redis
 ```
+If `--database` is also rejected, run `railway add` with no flags — the
+CLI drops into an interactive picker. Select "Database" → Postgres, then
+re-run for Redis.
 
-Railway provisions both addons and injects `DATABASE_URL` + `REDIS_URL`
-as automatic environment variables for every service in the project.
-**You do not set these by hand.**
+**Dashboard path (easiest):**
+1. Open https://railway.com/project/<your-project-id>
+2. Click **+ Create** → **Database** → **Add Postgres**
+3. Click **+ Create** → **Database** → **Add Redis**
 
-Verify in the Railway dashboard that both plugins show "Active" before
+Either way, Railway provisions both addons and injects `DATABASE_URL` +
+`REDIS_URL` as automatic environment variables for every service in the
+project. **You do not set these by hand.**
+
+Verify in the dashboard that both plugins show "Active" / green before
 deploying any service.
 
 ## Step 3 — deploy the MCP web service
 
+**CLI path:**
 ```
 railway up                         # builds the Dockerfile, deploys
 ```
@@ -59,18 +71,33 @@ Railway reads `railway.json` and picks up:
 - `deploy.startCommand: "pnpm start"` (the HTTP server)
 - `deploy.healthcheckPath: "/health"`
 
+**Dashboard path:**
+1. From the project page → **+ Create** → **Empty Service**.
+2. Settings → **Source** → connect this GitHub repo (or **Empty** if
+   pushing via `railway up`).
+3. Settings → **Build** → confirm "Dockerfile" is detected.
+4. Click **Deploy**.
+
 The first build takes 3-5 min. Subsequent builds are cached.
 
 **Set the operator-supplied env vars** (DATABASE_URL + REDIS_URL are
 already injected by the plugins; do NOT override):
 
+**CLI path:**
 ```
-railway variables set EDGAR_USER_AGENT="Helm13F <Real-Name> <real-email@domain.com>"
-railway variables set OPENFIGI_API_KEY=<key>           # optional
-railway variables set LOG_LEVEL=info
-railway variables set INGESTION_MODE=cron
-railway variables set CONTEXT_MIDDLEWARE_ENABLED=true  # paid-tool gate; required for Phase 5
+railway variables --set EDGAR_USER_AGENT="Helm13F <Real-Name> <real-email@domain.com>"
+railway variables --set OPENFIGI_API_KEY=<key>           # optional
+railway variables --set LOG_LEVEL=info
+railway variables --set INGESTION_MODE=cron
+railway variables --set CONTEXT_MIDDLEWARE_ENABLED=false # KEEP FALSE during smoke tests; flip to true before Phase 5
 ```
+
+Some CLI versions use `railway variables set KEY=value` (no `--set`).
+If the first form fails, try without the dashes.
+
+**Dashboard path:** open the service → **Variables** tab → **+ New
+Variable** for each row above. Click **Deploy** after the last one to
+trigger a redeploy with the new env.
 
 After setting variables, redeploy so they take effect:
 
