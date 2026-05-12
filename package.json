@@ -16,6 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "migrate": "tsx scripts/migrate.ts",
+    "backfill": "tsx scripts/backfill.ts",
     "db:up": "docker compose up -d postgres redis",
     "db:down": "docker compose down",
     "dev": "tsx watch src/server/main.ts",

@@ -19,11 +19,11 @@
 | 7. Fuzzy filer name resolver | ✅ | `e615433` | 30 (8 levenshtein + 20 filer + 2 cluster patches) |
 | 8. Ingestion pipeline | ✅ | `9973270` | 17 (7 discover + 5 parse + 5 runner) |
 | 9. MCP server + 11 tools | ✅ | `9cd9c05` | 37 (9 service + 28 handler) |
-| 10. Redis caching layer | ✅ | (next commit) | 13 (8 cache + 5 wiring) |
-| 11. Backfill script | ⏳ | — | — |
+| 10. Redis caching layer | ✅ | (prev commit) | 13 (8 cache + 5 wiring) |
+| 11. Backfill script | ✅ | (next commit) | 5 (planBackfill) |
 | 12. End-to-end tests (docker-compose) | ⏳ | — | — |
 
-**Test totals:** 353 across 21 files. All four gates green: lint ✓ typecheck ✓ format ✓ tests ✓.
+**Test totals:** 358 across 22 files. All four gates green: lint ✓ typecheck ✓ format ✓ tests ✓.
 
 ## Phase tracker
 
@@ -48,13 +48,13 @@
 
 ```
 /migrations          001_filers_filings_holdings.sql, 002_lookup_and_cache.sql
-/scripts             migrate.ts
+/scripts             migrate.ts, backfill.ts
 /superinvestors      superinvestors.json (14 curated entries)
 /src
   /cache             types.ts (CacheProvider + buildCacheKey + CACHE_TTL), noop.ts, redis.ts (ioredis)
   /db                pool.ts, migrate.ts, repos/{filers,filings,holdings,cusipTickerMap,deltaCache,ingestionLog}.ts
   /domain            conviction.ts, delta.ts, cluster.ts
-  /ingestion         discover.ts, parse.ts, upsert.ts, runner.ts
+  /ingestion         discover.ts, parse.ts, upsert.ts, runner.ts, backfill.ts
   /parser            primaryDoc.ts, infoTable.ts, valueScale.ts, types.ts
   /resolution        levenshtein.ts, filer.ts, roster.ts
   /server

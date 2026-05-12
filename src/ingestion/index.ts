@@ -7,3 +7,5 @@ export { fetchAndParseFiling, FilingFetchError, type FetchedFiling } from './par
 export { persistFiling, type PersistFilingOptions, type PersistFilingResult } from './upsert.js';
 
 export { runIngestion, type IngestionRunInput, type IngestionRunSummary } from './runner.js';
+
+export { planBackfill, runBackfill, type BackfillOptions, type BackfillPlan } from './backfill.js';
