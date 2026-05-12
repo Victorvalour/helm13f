@@ -6,7 +6,7 @@
 
 ## Current position
 
-**Phase 3 complete through step 9.** Steps 10-12 pending. Phases 4-7 pending.
+**Phase 3 COMPLETE (12/12 steps).** Next: Phase 4 (Railway deploy).
 
 | Step | Status | Commit | Tests |
 |------|--------|--------|-------|
@@ -20,10 +20,10 @@
 | 8. Ingestion pipeline | ✅ | `9973270` | 17 (7 discover + 5 parse + 5 runner) |
 | 9. MCP server + 11 tools | ✅ | `9cd9c05` | 37 (9 service + 28 handler) |
 | 10. Redis caching layer | ✅ | (prev commit) | 13 (8 cache + 5 wiring) |
-| 11. Backfill script | ✅ | (next commit) | 5 (planBackfill) |
-| 12. End-to-end tests (docker-compose) | ⏳ | — | — |
+| 11. Backfill script | ✅ | (prev commit) | 5 (planBackfill) |
+| 12. End-to-end tests (docker-compose) | ✅ | (next commit) | 16 (3 ingestion + 11 query + 2 amendment) |
 
-**Test totals:** 358 across 22 files. All four gates green: lint ✓ typecheck ✓ format ✓ tests ✓.
+**Test totals:** 358 unit tests across 22 files + 16 e2e tests across 3 files (gated behind `pnpm test:e2e`, requires `pnpm db:up`). All four gates green: lint ✓ typecheck ✓ format ✓ tests ✓.
 
 ## Phase tracker
 
@@ -68,6 +68,9 @@
     /edgar           rateLimiter.ts (TokenBucket), client.ts, types.ts
     /openfigi        client.ts, cache.ts (in-memory + Layered + CusipResolver)
 /tests               mirrors src layout. fixtures/13f/ holds Berkshire/Scion/Pershing real XML.
+  /e2e               setup.ts, mock-edgar.ts, stub-resolver.ts, *.e2e.test.ts (gated; runs against docker Postgres)
+/vitest.config.ts    default config (excludes e2e from `pnpm test`)
+/vitest.e2e.config.ts e2e config (run via `pnpm test:e2e`)
 ```
 
 ## Outstanding deferred items
