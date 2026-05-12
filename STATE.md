@@ -6,7 +6,7 @@
 
 ## Current position
 
-**Phase 3 COMPLETE (12/12 steps).** Next: Phase 4 (Railway deploy).
+**Phase 3 COMPLETE (12/12 steps). Phase 4 artifacts READY.** Next: operator runs the Railway runbook in `docs/RAILWAY_DEPLOY.md`, then Phase 5 (Context registration).
 
 | Step | Status | Commit | Tests |
 |------|--------|--------|-------|
@@ -21,7 +21,7 @@
 | 9. MCP server + 11 tools | ✅ | `9cd9c05` | 37 (9 service + 28 handler) |
 | 10. Redis caching layer | ✅ | (prev commit) | 13 (8 cache + 5 wiring) |
 | 11. Backfill script | ✅ | (prev commit) | 5 (planBackfill) |
-| 12. End-to-end tests (docker-compose) | ✅ | (next commit) | 16 (3 ingestion + 11 query + 2 amendment) |
+| 12. End-to-end tests (docker-compose) | ✅ | (prev commit) | 16 (3 ingestion + 11 query + 2 amendment) |
 
 **Test totals:** 358 unit tests across 22 files + 16 e2e tests across 3 files (gated behind `pnpm test:e2e`, requires `pnpm db:up`). All four gates green: lint ✓ typecheck ✓ format ✓ tests ✓.
 
@@ -32,23 +32,26 @@
 | 0. Ground in facts | ✅ | EDGAR endpoints + 13F XML structure verified end-to-end. |
 | 1. Product contract | ✅ | `docs/PRODUCT_CONTRACT.md` locked, 7 calibrations folded in. |
 | 2. Schemas + migrations | ✅ | 11 tools (6 Q + 5 E), 94 contract tests, calibration 7 (ClusterEventRow). |
-| 3. Implementation | 🚧 | Steps 1-9 done; 10-12 pending. |
-| 4. Railway deploy | ⏳ | `railway.json` + Dockerfile + env-var checklist. **Note: Railway, not Fly.io.** |
+| 3. Implementation | ✅ | All 12 steps. 358 unit + 16 e2e tests. |
+| 4. Railway deploy | ✅ artifacts; ⏳ operator action | `Dockerfile`, `railway.json`, `scripts/ingest-scheduled.ts`, `docs/RAILWAY_DEPLOY.md`. Operator runs the runbook. |
 | 5. Context registration | ⏳ | Operator stakes $10 USDC, generates `CONTEXT_API_KEY` + `TOOL_ID`. |
 | 6. Optimization Skill | 🛑 hard-stop | Verify deployed tool, prompt pool, wallet funding before firing. |
 | 7. Grant review email | 🛑 hard-stop | Email draft reviewed before send to `grants@ctxprotocol.com`. |
 
 ## Dependencies installed
 
-- Runtime: `@modelcontextprotocol/sdk` ^1.29, `@ctxprotocol/sdk` ^0.13, `express` ^5.2, `pg` ^8.20, `fast-xml-parser` ^5.7, `dotenv`, `ajv` + `ajv-formats`.
-- Dev: `vitest` ^1.6, `eslint` ^9, `typescript-eslint` ^8, `prettier` ^3, `tsx`, `@types/{node,pg,express}`.
-- Pending step 10: `ioredis`.
+- Runtime: `@modelcontextprotocol/sdk` ^1.29, `@ctxprotocol/sdk` ^0.13, `express` ^5.2, `pg` ^8.20, `ioredis` ^5.10, `fast-xml-parser` ^5.7, `dotenv`, `ajv` + `ajv-formats`, `tsx` (moved to deps so the Docker prod install keeps the runner).
+- Dev: `vitest` ^1.6, `eslint` ^9, `typescript-eslint` ^8, `prettier` ^3, `@types/{node,pg,express}`.
 
 ## Repo layout (so far)
 
 ```
+/Dockerfile          multi-stage Node 20-alpine + pnpm; CMD `pnpm start`
+/railway.json        Railway service config (DOCKERFILE builder, /health probe)
+/.dockerignore       
+/docs/RAILWAY_DEPLOY.md operator runbook for Phase 4
 /migrations          001_filers_filings_holdings.sql, 002_lookup_and_cache.sql
-/scripts             migrate.ts, backfill.ts
+/scripts             migrate.ts, backfill.ts, ingest-scheduled.ts (cron entrypoint)
 /superinvestors      superinvestors.json (14 curated entries)
 /src
   /cache             types.ts (CacheProvider + buildCacheKey + CACHE_TTL), noop.ts, redis.ts (ioredis)

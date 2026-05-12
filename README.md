@@ -14,7 +14,8 @@ This repo is the canonical source for the live tool. It is public for grant revi
 - **Phase 1 — Product contract.** Done. See [`docs/PRODUCT_CONTRACT.md`](docs/PRODUCT_CONTRACT.md).
 - **Phase 2 — Schemas + migrations.** Done. 6 Query + 5 Execute tools defined; 94 contract tests passing. See [`docs/SCHEMAS.md`](docs/SCHEMAS.md).
 - **Phase 3 — Implementation.** In progress.
-- **Phase 4–7 — Deploy / register / optimize / submit.** Pending.
+- **Phase 4 — Railway deploy.** Done. Dockerfile + `railway.json` ready; runbook in [`docs/RAILWAY_DEPLOY.md`](docs/RAILWAY_DEPLOY.md).
+- **Phase 5–7 — Register / optimize / submit.** Pending.
 
 [`TODO.md`](TODO.md) tracks the live phase state.
 
@@ -117,12 +118,33 @@ Out-of-scope queries return a structured `not_in_scope` error, never a silent ap
 ```bash
 pnpm install
 cp .env.example .env.local        # fill in EDGAR_USER_AGENT, DATABASE_URL, REDIS_URL
-pnpm test                         # 94+ contract tests
+pnpm db:up                        # docker-compose Postgres + Redis
+pnpm migrate                      # apply SQL migrations
+pnpm test                         # 358 unit tests (no docker required)
+pnpm test:e2e                     # 16 e2e tests (docker required)
 pnpm typecheck
 pnpm lint
+pnpm dev                          # `tsx watch` on the MCP server
 ```
 
-A `docker-compose.yml` for local Postgres + Redis lands in Phase 3.5.
+## Production deployment
+
+Railway, with bundled Postgres + Redis plugins. End-to-end runbook:
+**[`docs/RAILWAY_DEPLOY.md`](docs/RAILWAY_DEPLOY.md)**. TL;DR:
+
+```bash
+railway init && railway add --plugin postgres && railway add --plugin redis
+railway variables set EDGAR_USER_AGENT="Helm13F <name> <email>"
+railway up
+railway run pnpm migrate
+railway run pnpm backfill -- --quarters=4
+```
+
+The image (`Dockerfile`) is multi-stage Node 20-alpine + pnpm. Two
+services share it: the MCP web server (`pnpm start`, healthchecked at
+`/health`) and the scheduled ingestion runner (`pnpm ingest:scheduled`,
+cron-driven, daily Feb/May/Aug/Nov + weekly off-season per Phase 0
+calibration 4).
 
 ---
 
