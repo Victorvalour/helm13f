@@ -9,10 +9,13 @@
 #   - `pnpm ingest:scheduled` → cron-triggered ingestion runner
 #   - `pnpm migrate`         → one-shot migrations (run pre-deploy)
 
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 WORKDIR /app
-# pnpm via corepack (Node 20 ships it).
-RUN corepack enable && corepack prepare pnpm@10 --activate
+# pnpm via corepack. Node 22 LTS, pnpm pinned to a specific version that
+# corepack will re-use at runtime (matched by `packageManager` in
+# package.json — without that pin, corepack auto-fetches the latest pnpm,
+# which can break against an older Node base image).
+RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
 
 # ---- deps stage ----
 # Note: no `--mount=type=cache` here — Railway's Metal builder rejects
