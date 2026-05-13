@@ -76,7 +76,11 @@ function collectFromRecent(
     const form = forms[i];
     if (form !== '13F-HR' && form !== '13F-HR/A') continue;
     const period = periods[i] || null;
-    if (period && !targetPeriods.has(period)) continue;
+    // Skip filings without periodOfReport: they can't be matched against the
+    // target window, and pre-2013 paper-format 13Fs don't have the
+    // primary_doc.xml the parser expects.
+    if (!period) continue;
+    if (!targetPeriods.has(period)) continue;
     out.push({
       filerCIK,
       filerName,

@@ -91,6 +91,30 @@ describe('discoverFilingsForFiler', () => {
     const out = await discoverFilingsForFiler(edgar, '0001067983', new Set(['2025-12-31']));
     expect(out[0]?.filerName).toBe('BERKSHIRE HATHAWAY INC');
   });
+
+  // Regression: pre-2002 paper 13F filings have null periodOfReport in EDGAR's
+  // submissions JSON. They must be skipped — they're outside any quarter window
+  // and don't have the primary_doc.xml the parser expects.
+  it('skips filings with null periodOfReport', async () => {
+    const subs: EdgarSubmissions = {
+      cik: '0001067983',
+      name: 'BERKSHIRE HATHAWAY INC',
+      filings: {
+        recent: {
+          accessionNumber: ['0000950148-99-001187', '0001193125-25-282901'],
+          filingDate: ['1999-08-15', '2025-11-14'],
+          form: ['13F-HR', '13F-HR'],
+          primaryDocument: ['', 'primary_doc.xml'],
+          periodOfReport: ['', '2025-09-30'],
+        },
+        files: [],
+      },
+    };
+    const edgar = makeStubEdgar(subs);
+    const out = await discoverFilingsForFiler(edgar, '0001067983', new Set(['2025-09-30']));
+    expect(out).toHaveLength(1);
+    expect(out[0]?.accessionNumber).toBe('0001193125-25-282901');
+  });
 });
 
 describe('recentQuarterEnds', () => {
