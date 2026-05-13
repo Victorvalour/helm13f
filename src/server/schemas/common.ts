@@ -607,10 +607,16 @@ export const tickerDeltaRowsSchema = {
   properties: {
     ticker: tickerSchema,
     issuerName: {
-      type: 'string',
-      description: 'Issuer name from any current-quarter holding row for this CUSIP.',
+      type: ['string', 'null'],
+      description:
+        'Issuer name from any current-quarter holding row for this CUSIP. Null when no rows match (unknown ticker or no superinvestor activity this quarter).',
     },
-    cusip: cusipSchema,
+    cusip: {
+      type: ['string', 'null'],
+      pattern: Patterns.cusip,
+      description:
+        '9-character uppercase alphanumeric CUSIP from any current-quarter holding row. Null when no rows match.',
+    },
     currentQuarter: quarterEndSchema,
     priorQuarter: quarterEndSchema,
     newInitiations: {

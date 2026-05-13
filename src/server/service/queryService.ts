@@ -115,8 +115,8 @@ export interface FilerDeltaRows {
 
 export interface TickerDeltaRows {
   ticker: string;
-  issuerName: string;
-  cusip: string;
+  issuerName: string | null;
+  cusip: string | null;
   currentQuarter: string;
   priorQuarter: string;
   newInitiations: NewInitiationRow[];
@@ -839,9 +839,11 @@ export class QueryService {
     const materialTrims = resizes.rows.filter((r) => r.deltaType === 'trim');
 
     // Resolve issuer + cusip from any current-quarter holding row.
+    // Both nullable: smoke tests and pre-backfill queries can hit a ticker
+    // with zero rows, and the schema's CUSIP pattern would reject "".
     const repIssuer = news.rows[0] ?? materialAdds[0] ?? materialTrims[0] ?? exits.rows[0];
-    const issuerName = repIssuer?.issuerName ?? '';
-    const cusip = repIssuer?.cusip ?? '';
+    const issuerName = repIssuer?.issuerName ?? null;
+    const cusip = repIssuer?.cusip ?? null;
 
     const rows: TickerDeltaRows = {
       ticker,
