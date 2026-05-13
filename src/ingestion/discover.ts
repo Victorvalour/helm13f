@@ -69,7 +69,10 @@ function collectFromRecent(
   const accs = recent.accessionNumber ?? [];
   const dates = recent.filingDate ?? [];
   const primaries = recent.primaryDocument ?? [];
-  const periods = recent.periodOfReport ?? [];
+  // SEC's submissions index uses `reportDate` for the quarter-end of a
+  // periodic filing. We carry it forward internally as `periodOfReport`
+  // (the name the cover-page XML uses) for shape consistency downstream.
+  const periods = recent.reportDate ?? [];
   const out: DiscoveredFiling[] = [];
 
   for (let i = 0; i < forms.length; i++) {

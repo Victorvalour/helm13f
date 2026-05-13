@@ -30,12 +30,17 @@ export interface EdgarSubmissions {
 /**
  * Parallel-array layout: arrays at every key are equal-length and
  * positionally aligned. accessionNumber[i] corresponds to form[i],
- * filingDate[i], periodOfReport[i], primaryDocument[i].
+ * filingDate[i], reportDate[i], primaryDocument[i].
+ *
+ * Note: the submissions index uses `reportDate` for the period-of-report.
+ * The cover-page XML inside the filing uses `periodOfReport` for the same
+ * concept — we read `reportDate` here, then carry it forward as
+ * `periodOfReport` internally to match the parsed shape.
  */
 export interface EdgarSubmissionsRecent {
   accessionNumber: string[]; // "0001193125-26-054580"
   filingDate: string[]; // ISO YYYY-MM-DD
-  reportDate?: string[];
+  reportDate?: string[]; // ISO YYYY-MM-DD; quarter-end for periodic forms.
   acceptanceDateTime?: string[];
   act?: string[];
   form: string[]; // e.g. "13F-HR", "13F-HR/A"
@@ -47,7 +52,6 @@ export interface EdgarSubmissionsRecent {
   isInlineXBRL?: number[];
   primaryDocument: string[];
   primaryDocDescription?: string[];
-  periodOfReport?: string[]; // ISO YYYY-MM-DD; absent for non-periodic forms
 }
 
 /**

@@ -48,7 +48,7 @@ const SAMPLE_SUBS: EdgarSubmissions = {
         'primary_doc.xml',
         '8k.htm',
       ],
-      periodOfReport: ['2025-12-31', '2025-09-30', '2025-06-30', '2025-06-30', '2026-01-15'],
+      reportDate: ['2025-12-31', '2025-09-30', '2025-06-30', '2025-06-30', '2026-01-15'],
     },
     files: [],
   },
@@ -92,10 +92,10 @@ describe('discoverFilingsForFiler', () => {
     expect(out[0]?.filerName).toBe('BERKSHIRE HATHAWAY INC');
   });
 
-  // Regression: pre-2002 paper 13F filings have null periodOfReport in EDGAR's
+  // Regression: pre-2002 paper 13F filings have empty reportDate in EDGAR's
   // submissions JSON. They must be skipped — they're outside any quarter window
   // and don't have the primary_doc.xml the parser expects.
-  it('skips filings with null periodOfReport', async () => {
+  it('skips filings with empty reportDate', async () => {
     const subs: EdgarSubmissions = {
       cik: '0001067983',
       name: 'BERKSHIRE HATHAWAY INC',
@@ -105,7 +105,7 @@ describe('discoverFilingsForFiler', () => {
           filingDate: ['1999-08-15', '2025-11-14'],
           form: ['13F-HR', '13F-HR'],
           primaryDocument: ['', 'primary_doc.xml'],
-          periodOfReport: ['', '2025-09-30'],
+          reportDate: ['', '2025-09-30'],
         },
         files: [],
       },

@@ -78,7 +78,7 @@ const SAMPLE_SUBS: EdgarSubmissions = {
       filingDate: ['2026-02-17'],
       form: ['13F-HR'],
       primaryDocument: ['primary_doc.xml'],
-      periodOfReport: ['2025-12-31'],
+      reportDate: ['2025-12-31'],
     },
     files: [],
   },
