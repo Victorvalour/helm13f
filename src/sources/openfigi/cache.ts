@@ -145,6 +145,19 @@ export class LayeredCusipCache implements CusipCache {
  * (could be in-memory, layered with Postgres, etc.). Records written back
  * to the cache always stamp `lastVerifiedAt` to `now`.
  */
+/**
+ * Normalize tickers from upstream sources to match our schema pattern
+ * `^[A-Z0-9.\-]{1,16}$`. EDGAR/OpenFIGI return share-class tickers in
+ * `HEI/A` style; our envelope schema (and most market-data vendors like
+ * Yahoo Finance) use `HEI-A`. Convert / → - and uppercase.
+ */
+export function normalizeTicker(raw: string | null | undefined): string | null {
+  if (raw === null || raw === undefined) return null;
+  const t = raw.trim().toUpperCase().replace(/\//g, '-');
+  if (t.length === 0) return null;
+  return t;
+}
+
 export class CusipResolver {
   constructor(
     private readonly cache: CusipCache,
@@ -155,12 +168,12 @@ export class CusipResolver {
   /** Resolve a single CUSIP. Returns null only when both cache and FIGI miss. */
   async resolve(cusip: string): Promise<CusipRecord | null> {
     const cached = await this.cache.get(cusip);
-    if (cached) return cached;
+    if (cached) return { ...cached, ticker: normalizeTicker(cached.ticker) };
     if (!this.figi) return null;
     const hit = await this.figi.mapCusip(cusip);
     const rec: CusipRecord = {
       cusip,
-      ticker: hit?.ticker ?? null,
+      ticker: normalizeTicker(hit?.ticker),
       issuerName: hit?.name ?? null,
       source: 'openfigi',
       lastVerifiedAt: this.now(),
@@ -180,7 +193,7 @@ export class CusipResolver {
     const missing: string[] = [];
     for (const c of cusips) {
       const r = cached.get(c);
-      if (r) out.set(c, r);
+      if (r) out.set(c, { ...r, ticker: normalizeTicker(r.ticker) });
       else missing.push(c);
     }
     if (missing.length === 0 || !this.figi) {
@@ -205,7 +218,7 @@ export class CusipResolver {
       const hit = figiRes.get(c) ?? null;
       const rec: CusipRecord = {
         cusip: c,
-        ticker: hit?.ticker ?? null,
+        ticker: normalizeTicker(hit?.ticker),
         issuerName: hit?.name ?? null,
         source: 'openfigi',
         lastVerifiedAt: stamp,

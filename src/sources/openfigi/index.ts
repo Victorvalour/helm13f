@@ -6,5 +6,5 @@ export type {
   OpenFigiMappingJob,
   OpenFigiResponseEntry,
 } from './types.js';
-export { CusipResolver, InMemoryCusipCache, LayeredCusipCache } from './cache.js';
+export { CusipResolver, InMemoryCusipCache, LayeredCusipCache, normalizeTicker } from './cache.js';
 export type { CusipCache, CusipRecord } from './cache.js';

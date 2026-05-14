@@ -5,6 +5,7 @@ import {
   CusipResolver,
   InMemoryCusipCache,
   LayeredCusipCache,
+  normalizeTicker,
   type CusipRecord,
   type OpenFigiHit,
 } from '../../../src/sources/openfigi/index.js';
@@ -28,6 +29,31 @@ class StubFigi {
 }
 
 const FIXED_NOW = new Date('2026-05-04T00:00:00Z');
+
+describe('normalizeTicker', () => {
+  it('converts share-class "/" to "-" (EDGAR/OpenFIGI → market-data convention)', () => {
+    expect(normalizeTicker('HEI/A')).toBe('HEI-A');
+    expect(normalizeTicker('LEN/B')).toBe('LEN-B');
+    expect(normalizeTicker('BRK/B')).toBe('BRK-B');
+  });
+
+  it('uppercases and trims', () => {
+    expect(normalizeTicker(' aapl ')).toBe('AAPL');
+  });
+
+  it('returns null for null/undefined/empty', () => {
+    expect(normalizeTicker(null)).toBeNull();
+    expect(normalizeTicker(undefined)).toBeNull();
+    expect(normalizeTicker('')).toBeNull();
+    expect(normalizeTicker('   ')).toBeNull();
+  });
+
+  it('passes through already-clean tickers unchanged', () => {
+    expect(normalizeTicker('AAPL')).toBe('AAPL');
+    expect(normalizeTicker('BF.B')).toBe('BF.B');
+    expect(normalizeTicker('BRK-B')).toBe('BRK-B');
+  });
+});
 
 describe('InMemoryCusipCache — basic behaviour', () => {
   it('returns null for a missing CUSIP', async () => {
@@ -244,8 +270,9 @@ describe('CusipResolver — batch path', () => {
     const r = new CusipResolver(cache, figi as never, () => FIXED_NOW);
     const got = await r.resolveBatch(['A', 'B', 'C']);
     expect(got.size).toBe(3);
-    expect(got.get('A')?.ticker).toBe('A-cached');
-    expect(got.get('B')?.ticker).toBe('B-figi');
+    // normalizeTicker uppercases on read/write
+    expect(got.get('A')?.ticker).toBe('A-CACHED');
+    expect(got.get('B')?.ticker).toBe('B-FIGI');
     expect(got.get('C')?.ticker).toBeNull();
     // Only one FIGI batch call, and only for the misses.
     expect(figi.calls).toHaveLength(1);
