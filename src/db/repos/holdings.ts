@@ -46,6 +46,25 @@ export interface HoldingUpsert {
   votingNone?: bigint;
 }
 
+export interface ConcentrationRow {
+  filerCIK: string;
+  filerName: string;
+  filerDisplayName: string | null;
+  superinvestorTier: 'legendary' | 'well-known' | 'notable' | null;
+  periodOfReport: string;
+  accessionNumber: string;
+  bookValueUSD: bigint;
+  holdingCount: number;
+  topPositionPctOfBook: number;
+  topPosition: {
+    ticker: string | null;
+    issuerName: string;
+    cusip: string;
+    shares: bigint;
+    valueUSD: bigint;
+  };
+}
+
 export class HoldingsRepo {
   constructor(private readonly db: QueryRunner) {}
 
@@ -166,6 +185,108 @@ export class HoldingsRepo {
     return r.rowCount ?? 0;
   }
 
+  /**
+   * Per-filer concentration snapshot for a given quarter, ranked by
+   * top-position pctOfBook desc, then holding count asc. Used by Q7.
+   *
+   * Filter `superinvestorTier`: when set, restrict to filers in that tier.
+   * When null, all filers (no roster filter).
+   *
+   * Returns at most `limit` rows. Each row carries the filer's latest
+   * non-superseded filing for the requested period, the top holding's
+   * cusip/ticker/issuer/shares/value, holding count, and book value.
+   */
+  async listConcentrationByQuarter(input: {
+    periodOfReport: string;
+    superinvestorTier: 'legendary' | 'well-known' | 'notable' | null;
+    limit: number;
+  }): Promise<ConcentrationRow[]> {
+    const params: unknown[] = [input.periodOfReport, input.limit];
+    let tierClause = '';
+    if (input.superinvestorTier !== null) {
+      params.push(input.superinvestorTier);
+      tierClause = `AND fr.superinvestor_tier = $${params.length}`;
+    }
+    const sql = `
+      WITH active_filings AS (
+        SELECT fi.filer_cik, fi.accession_number, fi.book_value_usd, fi.period_of_report
+        FROM filings fi
+        JOIN filers fr ON fr.filer_cik = fi.filer_cik
+        WHERE fi.period_of_report = $1
+          AND fi.superseded_by_accession IS NULL
+          AND fr.is_superinvestor = true
+          ${tierClause}
+      ),
+      per_filer AS (
+        SELECT
+          af.filer_cik,
+          af.accession_number,
+          af.book_value_usd,
+          af.period_of_report,
+          COUNT(h.cusip) AS holding_count,
+          MAX(h.pct_of_book) AS top_pct_of_book
+        FROM active_filings af
+        JOIN holdings h ON h.accession_number = af.accession_number
+        GROUP BY af.filer_cik, af.accession_number, af.book_value_usd, af.period_of_report
+      ),
+      top_holding AS (
+        SELECT DISTINCT ON (h.accession_number)
+          h.accession_number,
+          h.cusip,
+          h.ticker,
+          h.issuer_name,
+          h.shares,
+          h.value_usd,
+          h.pct_of_book
+        FROM holdings h
+        JOIN per_filer pf ON pf.accession_number = h.accession_number
+        ORDER BY h.accession_number, h.pct_of_book DESC
+      )
+      SELECT
+        pf.filer_cik,
+        pf.accession_number,
+        pf.book_value_usd,
+        pf.period_of_report,
+        pf.holding_count,
+        pf.top_pct_of_book,
+        fr.filer_name,
+        fr.display_name,
+        fr.superinvestor_tier,
+        th.cusip       AS top_cusip,
+        th.ticker      AS top_ticker,
+        th.issuer_name AS top_issuer_name,
+        th.shares      AS top_shares,
+        th.value_usd   AS top_value_usd
+      FROM per_filer pf
+      JOIN filers fr ON fr.filer_cik = pf.filer_cik
+      JOIN top_holding th ON th.accession_number = pf.accession_number
+      ORDER BY pf.top_pct_of_book DESC, pf.holding_count ASC
+      LIMIT $2
+    `;
+    const r = await this.db.query<DbConcentrationRow>(sql, params);
+    return r.rows.map((row) => ({
+      filerCIK: row.filer_cik,
+      filerName: row.filer_name,
+      filerDisplayName: row.display_name,
+      superinvestorTier: row.superinvestor_tier,
+      periodOfReport:
+        typeof row.period_of_report === 'string'
+          ? row.period_of_report
+          : row.period_of_report.toISOString().slice(0, 10),
+      accessionNumber: row.accession_number,
+      bookValueUSD: BigInt(row.book_value_usd),
+      holdingCount: Number(row.holding_count),
+      topPositionPctOfBook: Number(row.top_pct_of_book),
+      topPosition: {
+        ticker: row.top_ticker,
+        issuerName: row.top_issuer_name,
+        cusip: row.top_cusip,
+        shares: BigInt(row.top_shares),
+        valueUSD: BigInt(row.top_value_usd),
+      },
+    }));
+  }
+
   /** Backfill ticker for any holdings whose CUSIP just resolved. */
   async setTickerForCusip(cusip: string, ticker: string | null): Promise<number> {
     const r = await this.db.query(
@@ -201,6 +322,23 @@ interface DbHoldingRow {
   voting_sole: string;
   voting_shared: string;
   voting_none: string;
+}
+
+interface DbConcentrationRow {
+  filer_cik: string;
+  filer_name: string;
+  display_name: string | null;
+  superinvestor_tier: 'legendary' | 'well-known' | 'notable' | null;
+  period_of_report: Date | string;
+  accession_number: string;
+  book_value_usd: string;
+  holding_count: string | number;
+  top_pct_of_book: string | number;
+  top_cusip: string;
+  top_ticker: string | null;
+  top_issuer_name: string;
+  top_shares: string;
+  top_value_usd: string;
 }
 
 function rowToHolding(r: DbHoldingRow): HoldingRow {

@@ -16,6 +16,7 @@ export default tseslint.config(
       '*.config.mjs',
       'vitest.config.ts',
       'vitest.e2e.config.ts',
+      'scripts/.phase6/**',
     ],
   },
   js.configs.recommended,

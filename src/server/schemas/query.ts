@@ -17,6 +17,8 @@ import {
   rowsArraySchema,
   tickerSchema,
   quarterEndSchema,
+  concentrationRowSchema,
+  Enums,
 } from './common.js';
 
 // Reusable input fragments
@@ -317,4 +319,47 @@ export const Q6 = {
   _meta: intelligenceMeta('Composite ticker delta. Rows is a 4-bucket object, not a flat array.'),
 } as const;
 
-export const QUERY_TOOLS = [Q1, Q2, Q3, Q4, Q5, Q6] as const;
+// =====================================================================
+// Q7 — query_concentrated_portfolios
+// =====================================================================
+// Composes list_superinvestors + per-filer holdings ranking server-side so a
+// single tool call returns the concentration ranking that prosumers use to
+// clone-invest the most conviction-driven managers. Without this, the Query
+// runtime has to chain list_superinvestors → get_filer_delta × N which it
+// generally won't compose unprompted.
+export const Q7 = {
+  name: 'query_concentrated_portfolios',
+  description:
+    'Which superinvestors run the most concentrated portfolios for a given quarter? Returns one row per filer with their book value, holding count, top-position pctOfBook, and the single largest holding. Sort: topPositionPctOfBook descending (most conviction-driven first), then holdingCount ascending (fewer positions = more concentrated). Free LLMs cannot answer because they can neither enumerate the curated roster nor compute live per-filer concentration.',
+  inputSchema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      quarter: quarterInputOptional,
+      tier: {
+        type: 'string',
+        enum: [...Enums.superinvestorTier],
+        description:
+          "Optional filter to a single roster tier: 'legendary' | 'well-known' | 'notable'. When omitted, ranks across the full curated roster.",
+      },
+      limit: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 200,
+        default: 25,
+        description: 'Maximum rows returned. Default 25. Rows are pre-sorted by concentration.',
+      },
+    },
+  },
+  outputSchema: envelopeSchema(
+    rowsArraySchema(
+      concentrationRowSchema,
+      'Per-filer concentration snapshot rows. Sorted by topPositionPctOfBook desc, then holdingCount asc.',
+    ),
+  ),
+  _meta: intelligenceMeta(
+    'Concentration ranking across the curated superinvestor roster. Single call composes the cross-filer aggregation server-side.',
+  ),
+} as const;
+
+export const QUERY_TOOLS = [Q1, Q2, Q3, Q4, Q5, Q6, Q7] as const;

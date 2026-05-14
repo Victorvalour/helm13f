@@ -257,6 +257,31 @@ export function makeHandlers(
       return ok(env);
     },
 
+    query_concentrated_portfolios: async (args) => {
+      const quarter = optionalQuarter(args);
+      if (isError(quarter)) return quarter;
+      const tierRaw = args['tier'];
+      let tier: 'legendary' | 'well-known' | 'notable' | undefined;
+      if (tierRaw !== undefined) {
+        if (
+          typeof tierRaw !== 'string' ||
+          (tierRaw !== 'legendary' && tierRaw !== 'well-known' && tierRaw !== 'notable')
+        ) {
+          return err('invalid_input', "input.tier must be 'legendary' | 'well-known' | 'notable'");
+        }
+        tier = tierRaw;
+      }
+      const limit = optionalInt(args, 'limit', 1, 200);
+      if (isError(limit)) return limit;
+
+      const env = await svc.q7ConcentratedPortfolios({
+        ...(quarter !== undefined ? { quarter } : {}),
+        ...(tier !== undefined ? { tier } : {}),
+        ...(limit !== undefined ? { limit } : {}),
+      });
+      return ok(env);
+    },
+
     get_filer_delta: async (args) => {
       const cik = args['filerCIK'];
       if (typeof cik !== 'string' || !CIK_RE.test(cik)) {

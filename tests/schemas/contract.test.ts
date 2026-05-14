@@ -376,8 +376,8 @@ describe('Tool definitions — structural', () => {
     },
   );
 
-  it('There are exactly 11 tools (6 Query + 5 Execute)', () => {
-    expect(ALL_TOOLS.length).toBe(11);
+  it('There are exactly 12 tools (7 Query + 5 Execute)', () => {
+    expect(ALL_TOOLS.length).toBe(12);
   });
 });
 

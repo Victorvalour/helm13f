@@ -125,6 +125,25 @@ export interface TickerDeltaRows {
   materialTrims: ResizeRow[];
 }
 
+export interface ConcentrationRow {
+  filerCIK: string;
+  filerName: string;
+  filerDisplayName: string | null;
+  superinvestorTier: 'legendary' | 'well-known' | 'notable' | null;
+  periodOfReport: string;
+  accessionNumber: string;
+  bookValueUSD: number;
+  holdingCount: number;
+  topPositionPctOfBook: number;
+  topPosition: {
+    ticker: string | null;
+    issuerName: string;
+    cusip: string;
+    shares: number;
+    valueUSD: number;
+  };
+}
+
 // ---------- QueryService dependencies ----------
 
 export interface QueryServiceDeps {
@@ -888,6 +907,101 @@ export class QueryService {
       confidence: this.buildConfidence(total, []),
       view: { kind: 'table', primaryColumn: 'filerName', weightColumn: 'pctOfBook' },
       meta: await this.buildMeta(current, 'USD', truncated, total, limit),
+    });
+  }
+
+  q7ConcentratedPortfolios(input: {
+    quarter?: string;
+    tier?: 'legendary' | 'well-known' | 'notable';
+    limit?: number;
+  }): Promise<BuiltEnvelope<ConcentrationRow[]>> {
+    return this.cache.getOrCompute(
+      buildCacheKey('q7', input as Record<string, unknown>),
+      this.ttlFor(input.quarter),
+      () => this.q7ConcentratedPortfoliosCompute(input),
+    );
+  }
+
+  private async q7ConcentratedPortfoliosCompute(input: {
+    quarter?: string;
+    tier?: 'legendary' | 'well-known' | 'notable';
+    limit?: number;
+  }): Promise<BuiltEnvelope<ConcentrationRow[]>> {
+    const limit = input.limit ?? 25;
+    const current = input.quarter ?? (await this.latestQuarter());
+    const prior = previousQuarterEnd(current);
+
+    const repo = new HoldingsRepo(this.db);
+    const dbRows = await repo.listConcentrationByQuarter({
+      periodOfReport: current,
+      superinvestorTier: input.tier ?? null,
+      limit,
+    });
+
+    const rows: ConcentrationRow[] = dbRows.map((r) => ({
+      filerCIK: r.filerCIK,
+      filerName: r.filerName,
+      filerDisplayName: r.filerDisplayName,
+      superinvestorTier: r.superinvestorTier,
+      periodOfReport: r.periodOfReport,
+      accessionNumber: r.accessionNumber,
+      bookValueUSD: bigToNumberSafe(r.bookValueUSD),
+      holdingCount: r.holdingCount,
+      topPositionPctOfBook: r.topPositionPctOfBook,
+      topPosition: {
+        ticker: r.topPosition.ticker,
+        issuerName: r.topPosition.issuerName,
+        cusip: r.topPosition.cusip,
+        shares: bigToNumberSafe(r.topPosition.shares),
+        valueUSD: bigToNumberSafe(r.topPosition.valueUSD),
+      },
+    }));
+
+    const topByPctOfBookFilerCIK = rows[0]?.filerCIK ?? null;
+    const summary =
+      rows.length > 0
+        ? `${rows.length} filers ranked by ${current} concentration; most concentrated: ${rows[0]!.filerDisplayName ?? rows[0]!.filerName} (top position ${(rows[0]!.topPositionPctOfBook * 100).toFixed(1)}% of book, ${rows[0]!.holdingCount} holdings).`
+        : `No concentration data for ${current}; no superinvestor filings ingested for that quarter.`;
+
+    return buildEnvelope({
+      summary,
+      rows,
+      summaryStats: {
+        count: rows.length,
+        totalConvictionWeight: rows.reduce((s, r) => s + r.topPositionPctOfBook, 0),
+        topByPctOfBookFilerCIK,
+      },
+      clusterSignal: null,
+      evidence: {
+        facts: rows.slice(0, 10).map((r) => ({
+          claim: `${r.filerDisplayName ?? r.filerName}: ${r.holdingCount} holdings, top position ${r.topPosition.ticker ?? r.topPosition.cusip} at ${(r.topPositionPctOfBook * 100).toFixed(1)}% of book.`,
+          filerCIK: r.filerCIK,
+          accessionNumber: r.accessionNumber,
+          sourceURL: `https://www.sec.gov/Archives/edgar/data/${parseInt(r.filerCIK, 10)}/${r.accessionNumber.replace(/-/g, '')}/`,
+          filedAt: r.periodOfReport,
+        })),
+        sourceRefs: Array.from(
+          new Set(
+            rows.map(
+              (r) =>
+                `https://www.sec.gov/Archives/edgar/data/${parseInt(r.filerCIK, 10)}/${r.accessionNumber.replace(/-/g, '')}/`,
+            ),
+          ),
+        ),
+        assumptions: [
+          'Concentration measured as top-position pctOfBook (decimal) and holding count after (cusip, putCall) aggregation.',
+          'Long US equity disclosures only; 13F-HR does not include short positions or 13D/13G holdings.',
+        ],
+        unknowns: [],
+      },
+      freshness: await this.buildFreshness(current, prior),
+      confidence: this.buildConfidence(rows.length, []),
+      view: {
+        kind: 'table',
+        primaryColumn: 'filerDisplayName',
+        weightColumn: 'topPositionPctOfBook',
+      },
+      meta: await this.buildMeta(current, 'USD', false, rows.length, limit),
     });
   }
 

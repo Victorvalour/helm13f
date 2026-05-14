@@ -698,6 +698,87 @@ export const superinvestorRowSchema = {
   },
 } as const;
 
+// Q7 row: a single filer's concentration snapshot for a specific quarter.
+// Computed by ranking each filer's holdings within their latest 13F-HR by
+// pctOfBook and reporting (count, top-position) per filer.
+export const concentrationRowSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'filerCIK',
+    'filerName',
+    'filerDisplayName',
+    'superinvestorTier',
+    'periodOfReport',
+    'accessionNumber',
+    'bookValueUSD',
+    'holdingCount',
+    'topPositionPctOfBook',
+    'topPosition',
+  ],
+  properties: {
+    filerCIK: cikSchema,
+    filerName: {
+      type: 'string',
+      description: 'Canonical EDGAR filer name.',
+    },
+    filerDisplayName: {
+      type: ['string', 'null'],
+      description: 'Friendlier display name from roster, null when not in roster.',
+    },
+    superinvestorTier: {
+      type: ['string', 'null'],
+      enum: [...Enums.superinvestorTier, null],
+      description: "'legendary' | 'well-known' | 'notable'. Null when not in roster.",
+    },
+    periodOfReport: quarterEndSchema,
+    accessionNumber: accessionSchema,
+    bookValueUSD: {
+      type: 'integer',
+      minimum: 0,
+      description: "Total reported 13F book value (USD) for this filer's quarter.",
+    },
+    holdingCount: {
+      type: 'integer',
+      minimum: 0,
+      description:
+        'Number of distinct (cusip, putCall) holdings rows after aggregation. Lower = more concentrated.',
+    },
+    topPositionPctOfBook: {
+      type: 'number',
+      minimum: 0,
+      maximum: 1,
+      description:
+        "pctOfBook of the single largest position in this filer's quarter (decimal in [0,1]). Higher = more concentrated.",
+    },
+    topPosition: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['ticker', 'issuerName', 'cusip', 'shares', 'valueUSD'],
+      description:
+        'The single largest holding in this quarter — what the filer has highest conviction in.',
+      properties: {
+        ticker: tickerOrNullSchema,
+        issuerName: {
+          type: 'string',
+          description: 'Issuer name from the cover-page InfoTable row.',
+        },
+        cusip: cusipSchema,
+        shares: {
+          type: 'integer',
+          minimum: 0,
+          description: 'Share count (or principal amount when sshPrnamtType=PRN).',
+        },
+        valueUSD: {
+          type: 'integer',
+          minimum: 0,
+          description: 'Reported market value of this position in USD.',
+        },
+      },
+    },
+  },
+} as const;
+
 // E4 row: a quarter-availability entry.
 export const quarterRowSchema = {
   type: 'object',
