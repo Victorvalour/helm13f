@@ -99,7 +99,7 @@ export const E1 = {
     additionalProperties: false,
     required: ['filerCIK'],
     properties: {
-      filerCIK: cikSchema,
+      filerCIK: { ...cikSchema, default: '0001067983' },
       currentQuarter: {
         ...quarterEndSchema,
         description: 'Optional. Defaults to the most recent quarter the filer has filed for.',
@@ -140,6 +140,7 @@ export const E2 = {
     properties: {
       ticker: {
         ...tickerSchema,
+        default: 'AAPL',
         description: 'US-listed ticker, uppercase, may include "." or "-".',
       },
       quarter: {
@@ -256,7 +257,10 @@ export const E5 = {
     additionalProperties: false,
     required: ['accessionNumber'],
     properties: {
-      accessionNumber: accessionSchema,
+      accessionNumber: {
+        ...accessionSchema,
+        default: '0001193125-26-054580',
+      },
     },
   },
   outputSchema: {

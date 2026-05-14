@@ -22,6 +22,7 @@ import {
 // Reusable input fragments
 const tickerInput = {
   ...tickerSchema,
+  default: 'AAPL',
   description:
     'US-listed equity ticker (uppercase, may include "." or "-"). Resolved against company_tickers.json + cusip_ticker_map.',
 };
@@ -199,6 +200,7 @@ export const Q4 = {
     properties: {
       filerNameOrCIK: {
         type: 'string',
+        default: '0001067983',
         description:
           "Either a 10-digit zero-padded CIK ('0001067983') or a fuzzy filer name ('Burry', 'Berkshire Hathaway'). The resolver checks the curated roster first, then falls back to fuzzy search.",
         examples: ['0001067983', 'Burry', 'Pershing'],
