@@ -259,6 +259,39 @@ describe('HoldingsRepo', () => {
     expect(q.values).toHaveLength(34);
   });
 
+  it('upsertManyForFiling chunks at 500 rows to stay under pg parameter limit', async () => {
+    // 1200 rows × 17 cols = 20400 params if unchunked — overflows pg's
+    // 16-bit parameter-count field. With CHUNK=500, expect 3 statements.
+    const stub = new StubQueryRunner();
+    stub.responses = [
+      { rows: [], rowCount: 500 },
+      { rows: [], rowCount: 500 },
+      { rows: [], rowCount: 200 },
+    ];
+    const repo = new HoldingsRepo(stub);
+    const rows = Array.from({ length: 1200 }, (_, i) => ({
+      accessionNumber: '0001193125-26-054580',
+      filerCIK: '0001067983',
+      periodOfReport: '2025-12-31',
+      cusip: String(i).padStart(9, '0'),
+      ticker: 'X' + i,
+      issuerName: 'X',
+      titleOfClass: 'COM',
+      shares: 1n,
+      valueUSD: 1n,
+      pctOfBook: 0,
+      convictionTier: 'scout' as const,
+      sshPrnamtType: 'SH' as const,
+      putCall: null,
+    }));
+    const n = await repo.upsertManyForFiling(rows);
+    expect(n).toBe(1200);
+    expect(stub.queries).toHaveLength(3);
+    expect(stub.queries[0]!.values).toHaveLength(500 * 17);
+    expect(stub.queries[1]!.values).toHaveLength(500 * 17);
+    expect(stub.queries[2]!.values).toHaveLength(200 * 17);
+  });
+
   it('listActiveByTicker joins through the active-filings subquery', async () => {
     const stub = new StubQueryRunner();
     stub.responses = [{ rows: [] }];

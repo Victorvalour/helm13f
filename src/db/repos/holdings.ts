@@ -90,8 +90,28 @@ export class HoldingsRepo {
     return r.rows.map(rowToHolding);
   }
 
-  /** Bulk-insert holdings for a filing. Caller must aggregate per (cusip, putCall) first. */
+  /**
+   * Bulk-insert holdings for a filing. Caller must aggregate per
+   * (cusip, putCall) first.
+   *
+   * Chunks the upsert into batches small enough that the bind message stays
+   * under Postgres' 16-bit parameter-count field (max 65535 per statement).
+   * At 17 columns/row, 500 rows = 8500 params — well under the limit.
+   * Large quants (Renaissance, Citadel, Adage) file >700 row 13Fs that
+   * blew the unchunked path with "bind message has N parameter formats
+   * but 0 parameters" errors.
+   */
   async upsertManyForFiling(rows: readonly HoldingUpsert[]): Promise<number> {
+    if (rows.length === 0) return 0;
+    const CHUNK = 500;
+    let total = 0;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      total += await this.upsertChunk(rows.slice(i, i + CHUNK));
+    }
+    return total;
+  }
+
+  private async upsertChunk(rows: readonly HoldingUpsert[]): Promise<number> {
     if (rows.length === 0) return 0;
     const placeholders: string[] = [];
     const params: unknown[] = [];
