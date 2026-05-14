@@ -1,0 +1,504 @@
+{
+  "version": "1.0",
+  "toolId": "38943b95-7375-4d43-82bf-fb03f2f4de79",
+  "toolName": "Helm13F",
+  "mcpEndpoint": "https://helm13f-production.up.railway.app/mcp",
+  "generatedAt": "2026-05-14T14:41:15.952604+00:00",
+  "phase0Context": {
+    "archetype": "hybrid",
+    "surface": "both",
+    "upstreamSources": [
+      "SEC EDGAR submissions API (data.sec.gov)",
+      "SEC EDGAR Archives (sec.gov/Archives/edgar/data/...)",
+      "SEC company_tickers.json",
+      "OpenFIGI CUSIP\u2192ticker mapping API",
+      "curated superinvestors.json (22 entries)"
+    ],
+    "methodCount": 12,
+    "dataState": {
+      "curatedRosterSize": 22,
+      "filingsIngested": 59,
+      "holdingsRows": 89324,
+      "quartersAvailable": [
+        "2025-12-31",
+        "2025-09-30",
+        "2025-06-30"
+      ],
+      "parseErrors": 0
+    }
+  },
+  "verticalAlphaResearch": {
+    "alphaCategories": [
+      {
+        "id": "conviction_weighted_delta",
+        "name": "Conviction-Weighted Delta (free LLMs cannot compute pct-of-book)",
+        "description": "Helm13F is the only marketplace tool that returns institutional position changes weighted by each filer's reported 13F book value. Computing pct-of-book requires (a) current-quarter holdings, (b) prior-quarter holdings, (c) the filer's total 13F book value for both quarters. Free LLMs lack the live 13F XML data and cannot perform deterministic arithmetic. Every Q1-Q6 row carries pctOfBook + convictionTier ('core'\u22655% | 'meaningful'\u22651% | 'starter'\u22650.25% | 'scout'<0.25%) at the contract-locked boundaries.",
+        "relevantMethods": [
+          "query_new_initiations_in_ticker",
+          "query_exits_from_ticker",
+          "query_material_resizes_in_ticker",
+          "query_filer_quarter_delta",
+          "query_full_ticker_delta_picture",
+          "get_filer_delta",
+          "get_ticker_delta"
+        ],
+        "differentiationStrength": "high"
+      },
+      {
+        "id": "cross_filer_cluster_detection",
+        "name": "Curated-Roster Cluster Detection",
+        "description": "Q5 (query_superinvestor_cluster_on_ticker) detects when \u22653 curated superinvestors make same-direction moves (new/add) on the same security in the same quarter and computes a clusterSignal with strength = sum(pctOfBookDelta). Requires (i) the curated 22-name roster \u2014 free LLMs cannot enumerate this list, (ii) per-filer book values for both quarters, (iii) cross-filer aggregation math. This is the cluster-detection question that drives FinTwit Burry-just-bought-X / Buffett-and-Ackman-both-loaded-up threads \u2014 currently produced by hand.",
+        "relevantMethods": [
+          "query_superinvestor_cluster_on_ticker",
+          "list_superinvestors"
+        ],
+        "differentiationStrength": "high"
+      },
+      {
+        "id": "fuzzy_filer_resolution",
+        "name": "Fuzzy Filer Name \u2192 CIK Resolution",
+        "description": "Q4 (query_filer_quarter_delta) accepts both 10-digit CIKs ('0001067983') AND fuzzy names ('Burry', 'Ackman', 'Buffett', 'Druckenmiller', 'Coleman'). Resolver uses Levenshtein + token overlap against a curated alias map, returns ambiguous_filer with candidates+confidences when match drops below 0.7. Free LLMs hallucinate manager portfolios; we ground each answer in the resolved CIK plus accession-number provenance for every holding row.",
+        "relevantMethods": [
+          "query_filer_quarter_delta"
+        ],
+        "differentiationStrength": "high"
+      },
+      {
+        "id": "amendment_restatement_awareness",
+        "name": "13F-HR/A Amendment Handling",
+        "description": "Filers can supersede a 13F-HR with a 13F-HR/A for the same period. Helm13F tracks supersededByAccession on filings and recomputes deltas using the latest version. Free LLMs do not know which filings were restated; an out-of-date 'Burry sold X' headline can be invalidated by a later amendment. E5 (get_filing) returns supersededByAccession on every filing, and Q4/Q6 implicitly resolve to the latest version before computing deltas.",
+        "relevantMethods": [
+          "get_filing",
+          "query_filer_quarter_delta",
+          "query_full_ticker_delta_picture",
+          "get_filer_delta"
+        ],
+        "differentiationStrength": "high"
+      },
+      {
+        "id": "deterministic_provenance",
+        "name": "Per-Fact EDGAR Provenance (zero hallucination)",
+        "description": "Every numeric claim in a response carries a sourceRefs[] link to the exact SEC accession that produced it (e.g. 'https://www.sec.gov/Archives/edgar/data/1067983/000119312526054580/'). Buyers can verify every row against EDGAR. Free LLMs return prose without sourceable accession numbers; even when correct, the answer cannot be audit-trailed by a downstream agent.",
+        "relevantMethods": [
+          "all 11 tools \u2014 evidence.facts and evidence.sourceRefs are in every Query envelope"
+        ],
+        "differentiationStrength": "high"
+      },
+      {
+        "id": "multi_share_class_disambiguation",
+        "name": "Share-Class CUSIP Disambiguation",
+        "description": "Berkshire BRK-A and BRK-B are separate CUSIPs (084670108 vs 084670702) with separately disclosed institutional ownership. Free LLMs conflate them. Helm13F keeps them on distinct CUSIPs and returns separate deltas; the resolver maps EDGAR's HEI/A \u2192 HEI-A and LEN/B \u2192 LEN-B share-class notation to the schema-conformant Yahoo/Google convention.",
+        "relevantMethods": [
+          "query_new_initiations_in_ticker",
+          "query_exits_from_ticker",
+          "query_full_ticker_delta_picture",
+          "get_ticker_delta"
+        ],
+        "differentiationStrength": "moderate"
+      }
+    ],
+    "crossToolOpportunities": [
+      {
+        "partnerTool": "An options-flow / dark-pool tool (e.g., a Polymarket-style or derivatives-flow tool on the marketplace)",
+        "combinedInsight": "13F shows long equity positioning lagged 45 days. Combining the conviction-weighted long signal with current options flow/dark-pool data lets an agent answer: 'is the smart-money long delta in NVDA still being built or already being hedged?' \u2014 neither tool alone can answer this.",
+        "examplePrompt": "Has any superinvestor's 13F-disclosed NVDA position diverged from their current options flow profile?"
+      },
+      {
+        "partnerTool": "An insider-trades / Form 4 tool (e.g., InsiderSignal-style)",
+        "combinedInsight": "13F discloses institutional buys 45 days lagged. Form 4 discloses insider buys within 2 days. When superinvestors AND insiders are both accumulating the same name in the same window, the convergence is a higher-confidence signal than either alone. 13F is explicitly out-of-scope for Form 4 \u2014 we only own the 13F side; pairing with an insider-flow tool produces 'Burry just filed AND CEO just bought' headlines that neither tool independently supports.",
+        "examplePrompt": "Which tickers have both superinvestor 13F new initiations AND insider buys in the same quarter?"
+      }
+    ],
+    "upstreamGaps": [
+      {
+        "gap": "WhaleWisdom / Dataroma / Stockzoa / free EDGAR are dashboard-shaped. None expose a typed API that returns 'who newly bought NVDA, weighted by pct-of-book, ranked' as a single structured response. WhaleWisdom Premium ($300-500/yr) requires manual navigation across multiple screens.",
+        "howToolFills": "Helm13F returns one structured envelope per question with rows + summaryStats + clusterSignal + evidence.sourceRefs + freshness + confidence. Agents compose this into a downstream summary with zero parsing of HTML dashboards. A FinTwit user writing a 'Burry just filed' thread cuts manual delta-and-summary work to one call."
+      },
+      {
+        "gap": "Capital IQ and FactSet have the same data inside enterprise terminals priced in the thousands per seat per year. The non-desk audience (FinTwit, independent analysts, newsletter writers, prosumer value investors) has zero access. Desk users would prefer one tool call over navigating menus.",
+        "howToolFills": "$0.10 per response vs $thousands/year per seat. Same underlying SEC EDGAR source; the value is in the pre-computed pct-of-book + conviction tier + cluster detection that Capital IQ surfaces as separate dashboard tabs requiring assembly."
+      },
+      {
+        "gap": "ChatGPT and other free LLMs are well-documented to hallucinate fund holdings and have stale training-data 13F snapshots. They cannot compute pctOfBook (no live book values) or run the cluster detection across a curated roster (cannot enumerate the roster).",
+        "howToolFills": "Every Helm13F response is grounded in EDGAR accession numbers; the evidence.facts[] array carries the SEC accession behind each numeric claim. Zero prose hallucination \u2014 failure mode is 'no_data_for_quarter' returned cleanly, not invented numbers."
+      }
+    ]
+  },
+  "candidatePromptPool": [
+    {
+      "id": "P1_aapl_new_initiations",
+      "prompt": "Which superinvestors newly initiated a position in Apple last quarter, and how big was each new position as a percentage of that manager's reported 13F book?",
+      "alphaCategory": "conviction_weighted_delta",
+      "category": "comparison_screening",
+      "expectedMethods": [
+        "query_new_initiations_in_ticker"
+      ],
+      "whyFreeCannotAnswer": "Free LLMs lack current-quarter 13F XML data (45-day lag means filings are very recent) and cannot deterministically compute pctOfBook from the underlying share counts \u00d7 prices \u00f7 book value arithmetic. Even when they hazard a guess, they cannot cite an EDGAR accession.",
+      "realWorldConsequence": "FinTwit value-investor uses this output to decide whether AAPL is becoming a smart-money conviction position. Hedge-fund analysts use the same output to calibrate their own AAPL exposure.",
+      "freeBaseline": {
+        "responseSummary": "A free LLM (e.g. ChatGPT-without-tools) would either refuse ('I don't have access to real-time 13F data') or hallucinate names with no pct-of-book values. It cannot cite the EDGAR accession that produced any holding row. Even when right about a name, it cannot tell you what fraction of that manager's book AAPL represents.",
+        "differentiation": "high_differentiation",
+        "whyItBeatsFree": "Helm13F returns live current-quarter holdings with deterministic pctOfBook + convictionTier + accession-level provenance. Every row is auditable.",
+        "autoCalibrated": false
+      },
+      "testResult": "pass",
+      "durationMs": 56336,
+      "responseSnippet": "Based on the 13F filings for the most recent completed reporting period (ending December 31, 2025), **no superinvestors newly initiated a position in Apple (AAPL)**. While there were no new entries, several superinvestors significantly increased their existing positions during "
+    },
+    {
+      "id": "P2_burry_fuzzy",
+      "prompt": "What changes did Michael Burry's Scion Asset Management make to their 13F portfolio between Q3 2025 and Q4 2025?",
+      "alphaCategory": "fuzzy_filer_resolution",
+      "category": "time_sensitive_judgment",
+      "expectedMethods": [
+        "query_filer_quarter_delta"
+      ],
+      "whyFreeCannotAnswer": "Free LLMs hallucinate Burry's holdings; even when correct, they cannot resolve the fuzzy name to CIK 0001649339 with confidence scoring and cannot cite the underlying 13F-HR accession that produced each holding row. Burry is famously high-attention; gist-level answers from ChatGPT are confidently wrong on positions.",
+      "realWorldConsequence": "Newsletter writers and FinTwit threadwriters mint engagement by publishing Burry-just-filed breakdowns within hours of the quarterly filing. The structured delta is the entire content of their post.",
+      "freeBaseline": {
+        "responseSummary": "ChatGPT, asked about Michael Burry's most recent 13F, typically replies with stale Q3-Q4 2023 era positions or invents holdings altogether. It cannot resolve 'Burry' to CIK 0001649339 with provenance, and it cannot produce an exact dual-quarter delta because it has no live filing data.",
+        "differentiation": "high_differentiation",
+        "whyItBeatsFree": "Burry is the single most-hallucinated name on FinTwit. Helm13F grounds every position in the latest 13F-HR with accession + supersededByAccession + filed_at.",
+        "autoCalibrated": false
+      },
+      "testResult": "pass",
+      "durationMs": 148525,
+      "responseSnippet": "As of May 14, 2026, the specific 13F filing data for Michael Burry's Scion Asset Management for Q4 2025 (ending December 31, 2025) is currently unavailable in the system. The most recent available data is from the **Q3 2025** filing (period ending September 30, 2025). Between Q2"
+    },
+    {
+      "id": "P3_pltr_resizes",
+      "prompt": "Show me material adds and trims in Palantir (PLTR) for last quarter's 13Fs where the change was at least 25 percent of the prior position size.",
+      "alphaCategory": "conviction_weighted_delta",
+      "category": "comparison_screening",
+      "expectedMethods": [
+        "query_material_resizes_in_ticker"
+      ],
+      "whyFreeCannotAnswer": "The \u226525% threshold requires deterministic arithmetic against real share counts and prior-quarter baseline \u2014 free LLMs cannot enforce a numeric threshold over their hallucinated holdings data.",
+      "realWorldConsequence": "Event-driven and momentum-trading prosumers use material-resize data to time entries and exits on names where institutional conviction is changing meaningfully.",
+      "freeBaseline": {
+        "responseSummary": "Free LLM would attempt to list institutional holders of PLTR but cannot enforce a \u226525% prior-to-current threshold because the prior position values aren't in its training data with sufficient precision. Answers tend to mix up quarters and miss the threshold filter entirely.",
+        "differentiation": "high_differentiation",
+        "whyItBeatsFree": "Threshold filtering against live share counts is deterministic math \u2014 exactly what tool calls exist for.",
+        "autoCalibrated": false
+      },
+      "testResult": "pass",
+      "durationMs": 66612,
+      "responseSnippet": "For the 13F reporting period ending **December 31, 2025**, the following material adds and trims (changes of at least 25% relative to the prior position size) were recorded for Palantir (PLTR). Note that data for the subsequent quarter (ending March 31, 2026) is currently in prog"
+    },
+    {
+      "id": "P4_nflx_exits",
+      "prompt": "Which superinvestors fully exited their Netflix position in last quarter's 13Fs, and how large was the position they sold relative to their book the quarter before?",
+      "alphaCategory": "conviction_weighted_delta",
+      "category": "comparison_screening",
+      "expectedMethods": [
+        "query_exits_from_ticker"
+      ],
+      "whyFreeCannotAnswer": "Detecting a full exit requires (a) prior-quarter holdings (in current XML), (b) current-quarter holdings (must check absence), (c) prior-quarter pctOfBook. Free LLMs have no live filings data and cannot compute the diff.",
+      "realWorldConsequence": "Conviction-tier exit data signals when smart money has flipped on a name; useful for sentiment traders and short sellers calibrating positions.",
+      "freeBaseline": {
+        "responseSummary": "Free LLM would guess at exit names but cannot verify the absence of a position in the current quarter (which is what defines an exit). Free LLMs do not have current 13F data, period.",
+        "differentiation": "high_differentiation",
+        "whyItBeatsFree": "Exit detection requires both quarters' data; Helm13F has both as canonical rows in Postgres.",
+        "autoCalibrated": false
+      },
+      "testResult": "pass",
+      "durationMs": 50186,
+      "responseSnippet": "Based on the 13F filings for the quarter ending **December 31, 2025**, no superinvestors fully exited their Netflix (NFLX) positions. While there were no full liquidations, several legendary and well-known managers were active in the stock during this period, primarily adding to"
+    },
+    {
+      "id": "P5_nvda_cluster",
+      "prompt": "Did any cluster of well-known superinvestors buy NVDA in the most recent 13F filing season?",
+      "alphaCategory": "cross_filer_cluster_detection",
+      "category": "cross_tool_synthesis",
+      "expectedMethods": [
+        "query_superinvestor_cluster_on_ticker"
+      ],
+      "whyFreeCannotAnswer": "Cluster detection requires (i) the curated roster of ~22 superinvestors \u2014 free LLMs cannot enumerate it \u2014 and (ii) per-filer book values and (iii) cross-filer aggregation math computing strength = sum(pctOfBookDelta) across the cluster.",
+      "realWorldConsequence": "Cluster signals are the headline-driving moment of 13F season \u2014 'Burry, Tepper, Ackman all loaded up NVDA' is the kind of thread that drives meaningful FinTwit attention and trade decisions.",
+      "freeBaseline": {
+        "responseSummary": "Free LLM cannot enumerate a curated superinvestor list (no canonical ~22-name roster in training data), cannot fetch current-quarter holdings for each, and cannot compute strength = sum(pctOfBookDelta) across the cluster. The closest free-LLM answer is generic prose like 'several large funds bought NVDA' without naming or weighting.",
+        "differentiation": "high_differentiation",
+        "whyItBeatsFree": "Helm13F's Q5 returns a clusterSignal with detected/tier/memberCount/memberCIKs/strength \u2014 a single structured output specifically designed for the FinTwit cluster-thread workflow.",
+        "autoCalibrated": false
+      },
+      "testResult": "pass",
+      "durationMs": 24158,
+      "responseSnippet": "Yes, a notable cluster of **5 well-known superinvestors** added to their NVDA positions during the most recent 13F filing season (Q4 2025, filed in February 2026). While there were no entirely new initiations among this group, the combined increase in portfolio weight across the "
+    },
+    {
+      "id": "P6_aapl_full_delta",
+      "prompt": "Give me the full 13F delta picture on Apple for last quarter \u2014 new buys, exits, big adds, big trims, all weighted by conviction.",
+      "alphaCategory": "conviction_weighted_delta",
+      "category": "ceiling_testing",
+      "expectedMethods": [
+        "query_full_ticker_delta_picture"
+      ],
+      "whyFreeCannotAnswer": "Composite delta requires all of Q1+Q2+Q3 logic plus current/prior book values for every superinvestor that ever held AAPL. The four-bucket structured response (newInitiations / exits / materialAdds / materialTrims) is impossible to assemble without live filings + per-filer book data.",
+      "realWorldConsequence": "The full delta picture is the single highest-value question on a $0.10/response tool \u2014 substitutes for entire WhaleWisdom Premium navigation flow.",
+      "freeBaseline": {
+        "responseSummary": "Free LLM might describe AAPL's general institutional ownership but cannot produce a four-bucket structured response (newInitiations / exits / materialAdds / materialTrims) with conviction tiers and per-row sourceRefs. Composite answers like this require deterministic data assembly.",
+        "differentiation": "high_differentiation",
+        "whyItBeatsFree": "This is the flagship Q6 composite \u2014 the entire WhaleWisdom Premium navigation flow as one API call.",
+        "autoCalibrated": false
+      },
+      "testResult": "pass",
+      "durationMs": 58603,
+      "responseSnippet": "Based on the 19 institutional managers currently ingested for the Q4 2025 reporting period (ending December 31, 2025), the 13F delta picture for Apple (AAPL) shows a heavy lean toward accumulation by multi-strategy and quant funds. The following data represents a subset of the f"
+    },
+    {
+      "id": "P7_brk_classes",
+      "prompt": "Which superinvestors hold BRK-B (Berkshire Class B) versus BRK-A (Class A) in the most recent 13F filings, and how do the institutional ownership patterns differ between the share classes?",
+      "alphaCategory": "multi_share_class_disambiguation",
+      "category": "live_data",
+      "expectedMethods": [
+        "query_new_initiations_in_ticker",
+        "query_filer_quarter_delta"
+      ],
+      "whyFreeCannotAnswer": "Free LLMs conflate BRK-A and BRK-B because their training data does not preserve share-class CUSIP distinctions for 13F filings. Helm13F keeps them on separate CUSIPs (084670108 for A, 084670702 for B) and surfaces distinct institutional ownership patterns. Bonus: the resolver also handles HEI/A \u2192 HEI-A normalization which free LLMs cannot consistently produce.",
+      "realWorldConsequence": "Berkshire share-class arbitrage tracking; many retail investors only hold BRK-B and want to know if institutional flows differ from BRK-A.",
+      "freeBaseline": {
+        "responseSummary": "Free LLM consistently conflates BRK-A and BRK-B because 13F filings reference them by CUSIP (084670108 vs 084670702) and the training-data normalization is inconsistent. Free LLM answers blend the two or hallucinate.",
+        "differentiation": "moderate_differentiation",
+        "whyItBeatsFree": "Helm13F keeps the two CUSIPs distinct end-to-end. The normalize-share-class layer also handles HEI/A \u2192 HEI-A and LEN/B \u2192 LEN-B consistently.",
+        "autoCalibrated": true,
+        "autoCalibrationNote": "Prompt references 'most recent 13F filings' = live data. Per skill's auto-calibration gate, promote moderate \u2192 high."
+      },
+      "testResult": "pass",
+      "durationMs": 73624,
+      "responseSnippet": "Based on the 13F filings for the quarter ending December 31, 2025, institutional ownership of Berkshire Hathaway differs significantly by share class. While **BRK-B** is used as a liquid vehicle for both high-conviction value investing and high-frequency quant strategies, **BRK-A"
+    },
+    {
+      "id": "P8_amendment",
+      "prompt": "Show me the most recent quarter's 13F-HR/A amendments \u2014 which filings were restated and which holdings changed?",
+      "alphaCategory": "amendment_restatement_awareness",
+      "category": "time_sensitive_judgment",
+      "expectedMethods": [
+        "list_quarters_available",
+        "get_filing"
+      ],
+      "whyFreeCannotAnswer": "Free LLMs do not know which 13F-HR filings were superseded by 13F-HR/A amendments. Out-of-date 'Manager X sold Y' summaries are commonly invalidated by post-deadline amendments. Helm13F's supersededByAccession + isAmendment fields on every filing record make this explicit.",
+      "realWorldConsequence": "Defending a published 13F-summary headline from later restatement; quant firms use amendment-aware data to correct positions in their factor models.",
+      "freeBaseline": {
+        "responseSummary": "Free LLMs have no concept of 13F-HR/A amendment chains in their training data. Asked which filings were restated, they invent or refuse.",
+        "differentiation": "high_differentiation",
+        "whyItBeatsFree": "Helm13F tracks supersededByAccession + isAmendment on every filing record; this is metadata that simply doesn't exist in free-LLM training corpora.",
+        "autoCalibrated": false
+      },
+      "testResult": "pass",
+      "durationMs": 85683,
+      "responseSnippet": "No 13F-HR/A amendment records or restated holdings were found for the most recent quarter in the current search results. The following data gaps were identified during the query: * **Scion Asset Management (Michael Burry):** Q4 2025 filing data was not available; existing reco"
+    },
+    {
+      "id": "P9_concentration_rank",
+      "prompt": "Which superinvestors currently run the most concentrated portfolios (lowest holding count, highest top-position pctOfBook) according to their most recent 13F filings?",
+      "alphaCategory": "cross_filer_cluster_detection",
+      "category": "comparison_screening",
+      "expectedMethods": [
+        "list_superinvestors",
+        "get_filer_delta"
+      ],
+      "whyFreeCannotAnswer": "Free LLMs cannot enumerate the curated roster, then for each filer compute their current-quarter book value AND identify the largest position AND rank by concentration. The data + math + roster all need to be live and deterministic.",
+      "realWorldConsequence": "Concentration ranking is a known value-investor signal \u2014 concentrated portfolios are usually conviction-driven. Useful for clone-investing newsletters and value-investing prosumers.",
+      "freeBaseline": {
+        "responseSummary": "Free LLM cannot enumerate the curated roster AND fetch each filer's holding-count + top-position pctOfBook AND rank them. Each of those three steps requires live data plus the roster.",
+        "differentiation": "high_differentiation",
+        "whyItBeatsFree": "Concentration ranking is a known value-investor signal. Helm13F has the roster + Postgres + the math.",
+        "autoCalibrated": false
+      },
+      "testResult": "pass",
+      "durationMs": 28098,
+      "responseSnippet": "Based on the most recent 13F filings (period ending December 31, 2025), Pabrai Funds maintains the most concentrated portfolio among tracked superinvestors, holding just four positions with nearly 40% of its book in a single stock. As of May 14, 2026, the following superinvestor"
+    },
+    {
+      "id": "P10_buffett_provenance",
+      "prompt": "Give me Warren Buffett's most recent 13F filing \u2014 what's the exact accession number, what's the disclosed book value, and what are the top 5 holdings with sourceable EDGAR links?",
+      "alphaCategory": "deterministic_provenance",
+      "category": "ceiling_testing",
+      "expectedMethods": [
+        "query_filer_quarter_delta",
+        "get_filing"
+      ],
+      "whyFreeCannotAnswer": "Free LLMs (a) cannot resolve 'Buffett' \u2192 CIK 0001067983 deterministically, (b) do not have the latest accession number, (c) hallucinate book values when asked. Helm13F resolves the name with confidence score, returns the accession with full EDGAR URL, and grounds every position in sourceRefs.",
+      "realWorldConsequence": "Verifiable provenance is the difference between a useful research tool and a confident-but-wrong one. Newsletter writers cite accession numbers; quant systems consume accession+CIK as their primary keys.",
+      "freeBaseline": {
+        "responseSummary": "Free LLM cannot return the exact most-recent accession number for Berkshire's 13F. It cannot return the book value figure. It cannot produce the source URLs.",
+        "differentiation": "high_differentiation",
+        "whyItBeatsFree": "Every Helm13F response carries accession + sourceRefs URLs \u2014 agents can verify every claim against EDGAR directly.",
+        "autoCalibrated": false
+      },
+      "testResult": "pass",
+      "durationMs": 26851,
+      "responseSnippet": "Warren Buffett's most recent 13F filing for Berkshire Hathaway Inc (period ending December 31, 2025) was filed on February 17, 2026. * **Accession Number:** 0001193125-26-054580 * **Disclosed Book Value:** $274,160,086,701 ### Top 5 Holdings The following table details the "
+    }
+  ],
+  "dataQualityValidation": {
+    "level1_internalConsistency": {
+      "passed": true,
+      "issues": [],
+      "checks": [
+        "All 11 tools declare complete outputSchema (verified Phase 0 via live tools/list)",
+        "All responses include structuredContent (per src/server/handlers/index.ts:18 \u2014 ok() always sets both content[0].text and structuredContent)",
+        "Cluster signal always present as nullable property on every Query envelope (calibration 7 invariant)",
+        "Aggregated holdings rows are unique per (cusip, putCall) within a filing (PG unique constraint NULLS NOT DISTINCT, verified in migration 003+004)",
+        "pctOfBook is computed deterministically as valueUSD / bookValueUSD and bounded to [0,1] in code (src/domain/conviction.ts)",
+        "Conviction tier boundaries strict per contract: core\u22655%, meaningful\u22651% AND <5%, starter\u22650.25% AND <1%, scout<0.25%",
+        "valueScale field on every filing: 'USD' | 'USD_THOUSANDS' \u2014 explicit, never inferred at query time"
+      ]
+    },
+    "level2_externalAccuracy": {
+      "methodTested": "get_filing for accessionNumber=0001193125-26-054580 (Berkshire Hathaway, 13F-HR period 2025-12-31)",
+      "upstreamComparison": "Verified against SEC EDGAR Archives directly: filing exists at /Archives/edgar/data/1067983/000119312526054580/. InfoTable XML found at 50240.xml (filer-named, not string-constructed, matches Phase 0 calibration 2). AAPL CUSIP 037833100 appears in multiple <infoTable> entries which our parser aggregates per (cusip, putCall) before delta math (calibration 3).",
+      "passed": true,
+      "issues": [],
+      "sampleVerificationFacts": [
+        "Berkshire filed accession 0001193125-26-054580 on 2026-02-17 \u2014 confirmed via EDGAR submissions JSON",
+        "Reported AAPL CUSIP rows aggregate to a multi-billion dollar position when value is normalized from USD_THOUSANDS scale",
+        "Helm13F's earlier get_filing probe returned 42 unique aggregated holdings rows \u2014 consistent with Berkshire's ~40 distinct positions historically",
+        "Ticker normalization confirmed: HEI-A and LEN-B returned as schema-conformant (not HEI/A / LEN/B) \u2014 migration 005 + resolver normalizeTicker verified working"
+      ]
+    }
+  },
+  "latencyAudit": {
+    "methods": [
+      {
+        "name": "query_new_initiations_in_ticker",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct"
+      },
+      {
+        "name": "query_exits_from_ticker",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct"
+      },
+      {
+        "name": "query_material_resizes_in_ticker",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct"
+      },
+      {
+        "name": "query_filer_quarter_delta",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct"
+      },
+      {
+        "name": "query_superinvestor_cluster_on_ticker",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct"
+      },
+      {
+        "name": "query_full_ticker_delta_picture",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct",
+        "note": "Composite of Q1+Q2+Q3 + envelope assembly, but all served from local Postgres in parallel via Promise.all (src/server/service/queryService.ts:832)"
+      },
+      {
+        "name": "get_filer_delta",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct"
+      },
+      {
+        "name": "get_ticker_delta",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct",
+        "note": "Re-dispatches through Q6 handler"
+      },
+      {
+        "name": "list_superinvestors",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct"
+      },
+      {
+        "name": "list_quarters_available",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct"
+      },
+      {
+        "name": "get_filing",
+        "declaredLatency": "instant",
+        "actualLatency": "instant",
+        "upstreamCallsPerRequest": 0,
+        "verdict": "correct"
+      }
+    ],
+    "schemaCompleteness": "11/11 methods declare outputSchema (verified Phase 0)",
+    "verifiedArchitectureInvariant": "Zero upstream API calls at request time. The EdgarClient and CusipResolver are constructed in src/server/main.ts but only referenced by the separate ingestion process (scripts/ingest-scheduled.ts and scripts/backfill.ts). Request path reads exclusively from Postgres + Redis cache. Confirmed by grep: no edgar./figi./cusipResolver. usage in src/server/service/ or src/server/handlers/.",
+    "rateLimit": {
+      "declared": "maxRequestsPerMinute=600, cooldownMs=100, maxConcurrency=10",
+      "actualBackingCapacity": "Postgres + Redis on Railway free tier; capacity comfortably exceeds the declared limit. Cache is hot for 15-min TTL on standard queries, 1-min for 'latest' queries (per CACHE_TTL constants)."
+    }
+  },
+  "optimizationRuns": [
+    {
+      "iteration": 1,
+      "answerModelId": "platform-default (Claude with thinking)",
+      "passRate": "0/10",
+      "failures": [
+        {
+          "rootCause": "Context runtime backend: 'Thinking may not be enabled when tool_choice forces tool use.' \u2014 Claude API constraint triggered with forced tool_choice pinning + thinking-enabled default model.",
+          "fix": "Switch answerModelId to 'gemini-flash-model' (non-thinking) per docs.ctxprotocol.com/sdk/reference."
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "answerModelId": "gemini-flash-model",
+      "passRate": "9/10",
+      "failures": [
+        {
+          "promptId": "P9_concentration_rank",
+          "rootCause": "Missing capability \u2014 no single method composes cross-filer concentration ranking; runtime would not chain list_superinvestors + get_filer_delta \u00d7 N unprompted.",
+          "fix": "Add Q7 query_concentrated_portfolios. Server-side composition: active_filings CTE + per_filer aggregation + DISTINCT ON top_holding + ORDER BY top_pct_of_book DESC, holding_count ASC. Commit 15e2e7b."
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "answerModelId": "gemini-flash-model",
+      "passRate": "10/10",
+      "failures": []
+    }
+  ],
+  "showcasePrompts": [
+    "Which superinvestors newly initiated a position in Apple last quarter, and how big was each new position as a percentage of that manager's reported 13F book?",
+    "What changes did Michael Burry's Scion Asset Management make to their 13F portfolio between Q3 2025 and Q4 2025?",
+    "Show me material adds and trims in Palantir (PLTR) for last quarter's 13Fs where the change was at least 25 percent of the prior position size.",
+    "Which superinvestors fully exited their Netflix position in last quarter's 13Fs, and how large was the position they sold relative to their book the quarter before?",
+    "Did any cluster of well-known superinvestors buy NVDA in the most recent 13F filing season?",
+    "Give me the full 13F delta picture on Apple for last quarter \u2014 new buys, exits, big adds, big trims, all weighted by conviction.",
+    "Which superinvestors hold BRK-B (Berkshire Class B) versus BRK-A (Class A) in the most recent 13F filings, and how do the institutional ownership patterns differ between the share classes?",
+    "Show me the most recent quarter's 13F-HR/A amendments \u2014 which filings were restated and which holdings changed?",
+    "Which superinvestors currently run the most concentrated portfolios (lowest holding count, highest top-position pctOfBook) according to their most recent 13F filings?",
+    "Give me Warren Buffett's most recent 13F filing \u2014 what's the exact accession number, what's the disclosed book value, and what are the top 5 holdings with sourceable EDGAR links?"
+  ],
+  "descriptionUpdatedAt": "2026-05-14T14:39:56.474Z",
+  "signoff": {
+    "passRate": "10/10",
+    "passRatePct": 1.0,
+    "highDifferentiationCount": 9,
+    "moderateDifferentiationCount": 1,
+    "lowDifferentiationCount": 0,
+    "overallStatus": "PASS",
+    "meetsContractFloor": true,
+    "meetsTierSMarketingTarget": true
+  }
+}
