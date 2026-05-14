@@ -214,10 +214,12 @@ function padCikRaw(s: string): string {
 }
 
 function mmddyyyyToISO(s: string): string {
-  // SEC writes "MM-DD-YYYY". Convert to "YYYY-MM-DD".
-  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s.trim());
+  // SEC writes "MM-DD-YYYY" — but some filers emit unpadded single-digit
+  // month/day (e.g. "8-14-2025"). Accept either and zero-pad before
+  // composing the ISO string.
+  const m = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(s.trim());
   if (!m) {
     throw new PrimaryDocParseError(`expected MM-DD-YYYY date, got ${s}`);
   }
-  return `${m[3]}-${m[1]}-${m[2]}`;
+  return `${m[3]}-${m[1]!.padStart(2, '0')}-${m[2]!.padStart(2, '0')}`;
 }

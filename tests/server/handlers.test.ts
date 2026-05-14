@@ -84,7 +84,9 @@ describe('handlers — input validation', () => {
     const h = makeHandlers(svc);
     const r = await h['query_new_initiations_in_ticker']!({});
     expect(r.isError).toBe(true);
-    expect((r.structuredContent as { errorCode: string }).errorCode).toBe('invalid_input');
+    expect(r.structuredContent).toBeUndefined();
+    const body = JSON.parse(r.content[0]!.text) as { errorCode: string };
+    expect(body.errorCode).toBe('invalid_input');
   });
 
   it('rejects malformed quarter on Q1', async () => {
@@ -181,7 +183,8 @@ describe('handlers — dispatch + arg forwarding', () => {
       filerNameOrCIK: 'Capital',
     });
     expect(r.isError).toBe(true);
-    const body = r.structuredContent as {
+    expect(r.structuredContent).toBeUndefined();
+    const body = JSON.parse(r.content[0]!.text) as {
       errorCode: string;
       candidates: unknown[];
     };
@@ -209,7 +212,9 @@ describe('handlers — dispatch + arg forwarding', () => {
       accessionNumber: '0001193125-26-054580',
     });
     expect(r.isError).toBe(true);
-    expect((r.structuredContent as { errorCode: string }).errorCode).toBe('no_data_for_quarter');
+    expect(r.structuredContent).toBeUndefined();
+    const body = JSON.parse(r.content[0]!.text) as { errorCode: string };
+    expect(body.errorCode).toBe('no_data_for_quarter');
   });
 });
 

@@ -127,13 +127,14 @@ describe('migrate', () => {
 });
 
 describe('migrate — Helm13F production migrations', () => {
-  it('discovers both 001_filers_filings_holdings.sql and 002_lookup_and_cache.sql', async () => {
+  it('discovers production migrations in order', async () => {
     const dir = join(process.cwd(), 'migrations');
     const db = new FakeDb();
     const out = await migrate(db, { dir });
     expect(out.map((m) => m.name)).toEqual([
       '001_filers_filings_holdings.sql',
       '002_lookup_and_cache.sql',
+      '003_holdings_put_call_nullable.sql',
     ]);
     // Each migration must have a non-empty sha256.
     for (const m of out) {

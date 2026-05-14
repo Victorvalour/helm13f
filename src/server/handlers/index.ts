@@ -24,9 +24,11 @@ function ok(data: unknown): CallToolResult {
 
 function err(errorCode: string, message: string, extra?: Record<string, unknown>): CallToolResult {
   const body = { errorCode, message, ...(extra ?? {}) };
+  // Note: no structuredContent on errors. When present, MCP validates it
+  // against the success outputSchema — an error envelope would always
+  // fail that check. content[0].text + isError carry the error.
   return {
     content: [{ type: 'text', text: JSON.stringify(body) }],
-    structuredContent: body,
     isError: true,
   };
 }
