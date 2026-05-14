@@ -135,6 +135,7 @@ describe('migrate — Helm13F production migrations', () => {
       '001_filers_filings_holdings.sql',
       '002_lookup_and_cache.sql',
       '003_holdings_put_call_nullable.sql',
+      '004_holdings_put_call_drop_not_null.sql',
     ]);
     // Each migration must have a non-empty sha256.
     for (const m of out) {
