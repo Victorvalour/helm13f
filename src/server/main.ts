@@ -62,14 +62,15 @@ async function main(): Promise<void> {
   void new EdgarClient({ userAgent: edgarUserAgent });
   void cusipResolver; // referenced by the ingestion runner (separate process).
 
-  // Hot cache: Redis when REDIS_URL set, otherwise a no-op pass-through
-  // (still correct, just no speedup). Key-prefix carries a version tag —
-  // bumping it abandons stale entries from earlier deploys without
-  // requiring FLUSHDB. v2 evicts the negative-cached null filings from
-  // the empty-DB period before backfill landed.
+  // Hot cache: Redis when REDIS_URL set, otherwise a no-op pass-through.
+  // The keyPrefix carries a version tag so we can abandon stale entries
+  // from earlier deploys without a FLUSHDB. Bump the tag whenever a code
+  // or data change would make cached results wrong:
+  //   v2 — added "don't negative-cache null" (empty-DB period)
+  //   v3 — share-class ticker normalization landed (HEI/A → HEI-A)
   const redisUrl = process.env['REDIS_URL'];
   const cache: CacheProvider = redisUrl
-    ? new RedisCache({ url: redisUrl, keyPrefix: 'helm13f:v2:' })
+    ? new RedisCache({ url: redisUrl, keyPrefix: 'helm13f:v3:' })
     : new NoopCache();
 
   const svc = new QueryService({ db, resolver, rosterByCik, cache });

@@ -66,9 +66,10 @@ export function buildMcpServer(opts: BuildMcpServerOptions): Server {
     const args = req.params.arguments ?? {};
     const handler = opts.handlers[name];
     if (!handler) {
+      // No structuredContent on errors — MCP validates it against the success
+      // outputSchema and an error envelope always fails that check.
       return {
         content: [{ type: 'text', text: JSON.stringify({ errorCode: 'unknown_tool', name }) }],
-        structuredContent: { errorCode: 'unknown_tool', name },
         isError: true,
       };
     }
@@ -85,10 +86,6 @@ export function buildMcpServer(opts: BuildMcpServerOptions): Server {
             }),
           },
         ],
-        structuredContent: {
-          errorCode: 'execution_failed',
-          message: (err as Error).message,
-        },
         isError: true,
       };
     }
