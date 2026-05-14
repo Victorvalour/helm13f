@@ -63,9 +63,14 @@ async function main(): Promise<void> {
   void cusipResolver; // referenced by the ingestion runner (separate process).
 
   // Hot cache: Redis when REDIS_URL set, otherwise a no-op pass-through
-  // (still correct, just no speedup).
+  // (still correct, just no speedup). Key-prefix carries a version tag —
+  // bumping it abandons stale entries from earlier deploys without
+  // requiring FLUSHDB. v2 evicts the negative-cached null filings from
+  // the empty-DB period before backfill landed.
   const redisUrl = process.env['REDIS_URL'];
-  const cache: CacheProvider = redisUrl ? new RedisCache({ url: redisUrl }) : new NoopCache();
+  const cache: CacheProvider = redisUrl
+    ? new RedisCache({ url: redisUrl, keyPrefix: 'helm13f:v2:' })
+    : new NoopCache();
 
   const svc = new QueryService({ db, resolver, rosterByCik, cache });
   const handlers = makeHandlers(svc);

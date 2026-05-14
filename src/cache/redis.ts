@@ -49,10 +49,16 @@ export class RedisCache implements CacheProvider {
     }
     this.log({ kind: 'miss', key: fullKey });
     const value = await compute();
-    try {
-      await this.client.set(fullKey, JSON.stringify(value), 'PX', Math.max(1, Math.floor(ttlMs)));
-    } catch (err: unknown) {
-      this.log({ kind: 'error', key: fullKey, error: err });
+    // Do not negatively cache: a null/undefined here means the upstream
+    // (DB) has nothing yet, but it may exist soon (e.g. after an
+    // ingestion run). Caching it would poison subsequent reads for the
+    // full TTL window even after the data lands.
+    if (value !== null && value !== undefined) {
+      try {
+        await this.client.set(fullKey, JSON.stringify(value), 'PX', Math.max(1, Math.floor(ttlMs)));
+      } catch (err: unknown) {
+        this.log({ kind: 'error', key: fullKey, error: err });
+      }
     }
     return value;
   }
