@@ -114,6 +114,70 @@
       "aliases": ["Weitz", "Wally Weitz", "Weitz Funds"],
       "superinvestorTier": "notable",
       "primaryStrategy": "value"
+    },
+    {
+      "cik": "0001412093",
+      "displayName": "Icahn Capital",
+      "edgarName": "ICAHN CAPITAL LP",
+      "aliases": ["Icahn", "Carl Icahn"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "event-driven"
+    },
+    {
+      "cik": "0001029160",
+      "displayName": "Soros Fund Management",
+      "edgarName": "SOROS FUND MANAGEMENT LLC",
+      "aliases": ["Soros", "George Soros", "Soros Fund"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "macro"
+    },
+    {
+      "cik": "0001061165",
+      "displayName": "Lone Pine Capital",
+      "edgarName": "LONE PINE CAPITAL LLC",
+      "aliases": ["Lone Pine", "Stephen Mandel", "Mandel"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "growth"
+    },
+    {
+      "cik": "0001135730",
+      "displayName": "Coatue Management",
+      "edgarName": "COATUE MANAGEMENT LLC",
+      "aliases": ["Coatue", "Philippe Laffont", "Laffont"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "growth"
+    },
+    {
+      "cik": "0000949509",
+      "displayName": "Oaktree Capital",
+      "edgarName": "OAKTREE CAPITAL MANAGEMENT LP",
+      "aliases": ["Oaktree", "Howard Marks", "Marks"],
+      "superinvestorTier": "legendary",
+      "primaryStrategy": "distressed"
+    },
+    {
+      "cik": "0001418814",
+      "displayName": "ValueAct Capital",
+      "edgarName": "ValueAct Holdings, L.P.",
+      "aliases": ["ValueAct", "Mason Morfit", "Morfit", "Jeffrey Ubben"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "activist"
+    },
+    {
+      "cik": "0001603466",
+      "displayName": "Point72 Asset Management",
+      "edgarName": "Point72 Asset Management, L.P.",
+      "aliases": ["Point72", "Steve Cohen", "Cohen"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "multi-strategy"
+    },
+    {
+      "cik": "0001273087",
+      "displayName": "Millennium Management",
+      "edgarName": "MILLENNIUM MANAGEMENT LLC",
+      "aliases": ["Millennium", "Izzy Englander", "Englander"],
+      "superinvestorTier": "well-known",
+      "primaryStrategy": "multi-strategy"
     }
   ]
 }
