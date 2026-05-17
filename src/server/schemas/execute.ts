@@ -93,7 +93,7 @@ const lightMetaSchema = {
 export const E1 = {
   name: 'get_filer_delta',
   description:
-    'Programmatic equivalent of Q4. Given a 10-digit padded CIK, returns full filer delta (newInitiations, exits, addedTo, trimmedFrom, unchanged) for a quarter pair. No fuzzy resolution — caller must supply CIK.',
+    "Programmatic equivalent of Q4. Given a 10-digit padded CIK, returns full filer delta (newInitiations, exits, addedTo, trimmedFrom, unchanged) for a quarter pair. No fuzzy resolution — caller must supply CIK. Scope: Helm13F v1 covers a curated 22-manager superinvestor universe — see list_superinvestors. CIKs outside the roster aren't ingested in v1.",
   inputSchema: {
     type: 'object',
     additionalProperties: false,

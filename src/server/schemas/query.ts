@@ -178,7 +178,7 @@ export const Q3 = {
 export const Q4 = {
   name: 'query_filer_quarter_delta',
   description:
-    "What did $MANAGER's fund change between two quarters? Accepts a CIK ('0001067983') or fuzzy name ('Burry', 'Buffett', 'Ackman'). Returns five sub-arrays: newInitiations, exits, addedTo, trimmedFrom, and (optionally) unchanged. If the fuzzy match confidence is below threshold, returns isError=true with errorCode='ambiguous_filer' and a candidates list.",
+    "What did $MANAGER's fund change between two quarters? Accepts a CIK ('0001067983') or fuzzy name ('Burry', 'Buffett', 'Ackman'). Returns five sub-arrays: newInitiations, exits, addedTo, trimmedFrom, and (optionally) unchanged. If the fuzzy match confidence is below threshold, returns isError=true with errorCode='ambiguous_filer' and a candidates list. Scope: Helm13F v1 covers a curated 22-manager superinvestor universe — see list_superinvestors. Filers outside the roster aren't ingested in v1.",
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -236,7 +236,7 @@ export const Q4 = {
 export const Q5 = {
   name: 'query_superinvestor_cluster_on_ticker',
   description:
-    "Did a cluster of well-known managers cluster-buy $TICKER in last quarter's 13Fs? Returns the cluster signal (tier weak/notable/strong, member count, combined book-weight strength) plus per-member rows distinguishing new initiations from material adds. A cluster requires 3+ superinvestors with new or add events on the ticker.",
+    "Did a cluster of well-known managers cluster-buy $TICKER in last quarter's 13Fs? Returns the cluster signal (tier weak/notable/strong, member count, combined book-weight strength) plus per-member rows distinguishing new initiations from material adds. A cluster requires 3+ superinvestors with new or add events on the ticker. Scope: Helm13F v1 covers a curated 22-manager superinvestor universe — see list_superinvestors for the full roster.",
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -309,7 +309,7 @@ export const Q6 = {
 export const Q7 = {
   name: 'query_concentrated_portfolios',
   description:
-    'Which superinvestors run the most concentrated portfolios for a given quarter? Returns one row per filer with their book value, holding count, top-position pctOfBook, and the single largest holding. Sort: topPositionPctOfBook descending (most conviction-driven first), then holdingCount ascending (fewer positions = more concentrated). Free LLMs cannot answer because they can neither enumerate the curated roster nor compute live per-filer concentration.',
+    'Which superinvestors run the most concentrated portfolios for a given quarter? Returns one row per filer with their book value, holding count, top-position pctOfBook, and the single largest holding. Sort: topPositionPctOfBook descending (most conviction-driven first), then holdingCount ascending (fewer positions = more concentrated). Free LLMs cannot answer because they can neither enumerate the curated roster nor compute live per-filer concentration. Scope: Helm13F v1 covers a curated 22-manager superinvestor universe — see list_superinvestors for the full roster.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
