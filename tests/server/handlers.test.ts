@@ -132,7 +132,6 @@ describe('handlers — dispatch + arg forwarding', () => {
       ticker: 'pool',
       quarter: '2025-12-31',
       minPctOfBook: 0.0025,
-      includeNonSuperinvestors: true,
       limit: 100,
     });
     expect(r.isError).toBeUndefined();
@@ -141,7 +140,6 @@ describe('handlers — dispatch + arg forwarding', () => {
       ticker: 'POOL',
       quarter: '2025-12-31',
       minPctOfBook: 0.0025,
-      includeNonSuperinvestors: true,
       limit: 100,
     });
   });

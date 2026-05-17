@@ -132,7 +132,7 @@ export const E1 = {
 export const E2 = {
   name: 'get_ticker_delta',
   description:
-    'Programmatic equivalent of Q6. Given a ticker, returns the full delta picture across all parsed filers — bucketed by deltaType (newInitiations / exits / materialAdds / materialTrims).',
+    'Programmatic equivalent of Q6. Given a ticker, returns the full delta picture bucketed by deltaType (newInitiations / exits / materialAdds / materialTrims). Scope: Helm13F v1 covers a curated 22-manager superinvestor universe — see list_superinvestors for the full roster.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -153,11 +153,6 @@ export const E2 = {
         maximum: 1,
         description: 'Hide rows whose pctOfBook is below this threshold (decimal).',
       },
-      includeNonSuperinvestors: {
-        type: 'boolean',
-        default: false,
-        description: 'Include non-roster filers. Default false.',
-      },
       limit: {
         type: 'integer',
         minimum: 1,
@@ -176,8 +171,10 @@ export const E2 = {
 // =====================================================================
 export const E3 = {
   name: 'list_superinvestors',
+  // (Helm13F v1 ships with 22 entries. Description and _meta below state this
+  // explicitly so any agent reading tools/list sees the actual roster size.)
   description:
-    'Discovery: returns the curated ~150 superinvestor roster with CIK, displayName, aliases, superinvestorTier, primaryStrategy, and pointer to last ingested filing. Optional tier or strategy filter.',
+    "Discovery: returns the curated 22-manager superinvestor roster with CIK, displayName, aliases, superinvestorTier, primaryStrategy, and pointer to last ingested filing. Optional tier or strategy filter. This is Helm13F v1's full filer universe — Q1/Q2/Q3/Q5/Q6 queries are scoped to these filers.",
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -208,7 +205,9 @@ export const E3 = {
       meta: lightMetaSchema,
     },
   },
-  _meta: discoveryMeta('Curated superinvestor roster (~150 entries).'),
+  _meta: discoveryMeta(
+    "Curated superinvestor roster (22 entries — Helm13F v1's full filer universe).",
+  ),
 } as const;
 
 // =====================================================================

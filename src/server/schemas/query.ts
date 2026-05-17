@@ -57,7 +57,7 @@ const intelligenceMeta = (description: string) => ({
 export const Q1 = {
   name: 'query_new_initiations_in_ticker',
   description:
-    "Which institutional managers newly initiated a position in $TICKER in the most recent 13F filing season, weighted by % of each manager's reported 13F book? Rows sorted by pctOfBook descending.",
+    "Which institutional managers newly initiated a position in $TICKER in the most recent 13F filing season, weighted by % of each manager's reported 13F book? Rows sorted by pctOfBook descending. Scope: Helm13F v1 covers a curated 22-manager superinvestor universe — see list_superinvestors for the full roster.",
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -72,12 +72,6 @@ export const Q1 = {
         description:
           'Minimum pctOfBook filter (decimal in [0,1]; e.g. 0.0025 = 0.25%). Default omitted = no minimum.',
         examples: [0.0025, 0.01],
-      },
-      includeNonSuperinvestors: {
-        type: 'boolean',
-        description:
-          'When true, includes non-roster filers in addition to curated superinvestors. Default false (most users want the curated signal).',
-        default: false,
       },
       limit: {
         type: 'integer',
@@ -104,7 +98,7 @@ export const Q1 = {
 export const Q2 = {
   name: 'query_exits_from_ticker',
   description:
-    "Which institutional managers fully exited their $TICKER position in last quarter's 13Fs, and how meaningful was that position relative to their book the quarter before? Rows sorted by priorPctOfBook descending.",
+    "Which institutional managers fully exited their $TICKER position in last quarter's 13Fs, and how meaningful was that position relative to their book the quarter before? Rows sorted by priorPctOfBook descending. Scope: Helm13F v1 covers a curated 22-manager superinvestor universe — see list_superinvestors for the full roster.",
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -119,11 +113,6 @@ export const Q2 = {
         description:
           'Minimum prior-quarter pctOfBook filter. Useful to surface only meaningful exits (e.g. 0.01 = exits of >=1%-of-book positions).',
         examples: [0.01],
-      },
-      includeNonSuperinvestors: {
-        type: 'boolean',
-        default: false,
-        description: 'When true, includes non-roster filers. Default false.',
       },
       limit: {
         type: 'integer',
@@ -146,7 +135,7 @@ export const Q2 = {
 export const Q3 = {
   name: 'query_material_resizes_in_ticker',
   description:
-    "Material adds and trims in $TICKER for last quarter's 13Fs, where the change is at least minDeltaPct (default 25%) of the prior position size. Includes both adds and trims; deltaType discriminates. Sorted by |pctOfBookDelta| descending.",
+    "Material adds and trims in $TICKER for last quarter's 13Fs, where the change is at least minDeltaPct (default 25%) of the prior position size. Includes both adds and trims; deltaType discriminates. Sorted by |pctOfBookDelta| descending. Scope: Helm13F v1 covers a curated 22-manager superinvestor universe — see list_superinvestors for the full roster.",
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -167,11 +156,6 @@ export const Q3 = {
         enum: ['add', 'trim', 'both'],
         default: 'both',
         description: "Filter by deltaType: 'add' only, 'trim' only, or 'both'.",
-      },
-      includeNonSuperinvestors: {
-        type: 'boolean',
-        default: false,
-        description: 'When true, includes non-roster filers. Default false.',
       },
       limit: {
         type: 'integer',
@@ -285,7 +269,7 @@ export const Q5 = {
 export const Q6 = {
   name: 'query_full_ticker_delta_picture',
   description:
-    'Full delta picture on $TICKER for last quarter — new buys, exits, big adds, big trims, all weighted by conviction. Composite of Q1+Q2+Q3 in one structured envelope. Rows are bucketed by deltaType.',
+    'Full delta picture on $TICKER for last quarter — new buys, exits, big adds, big trims, all weighted by conviction. Composite of Q1+Q2+Q3 in one structured envelope. Rows are bucketed by deltaType. Scope: Helm13F v1 covers a curated 22-manager superinvestor universe — see list_superinvestors for the full roster.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,
@@ -299,11 +283,6 @@ export const Q6 = {
         maximum: 1,
         description:
           'Minimum pctOfBook filter for newInitiations and materialAdds; minimum priorPctOfBook for exits and materialTrims.',
-      },
-      includeNonSuperinvestors: {
-        type: 'boolean',
-        default: false,
-        description: 'When true, includes non-roster filers. Default false.',
       },
       limit: {
         type: 'integer',

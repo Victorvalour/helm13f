@@ -254,7 +254,6 @@ export class QueryService {
     ticker: string;
     quarter?: string;
     minPctOfBook?: number;
-    includeNonSuperinvestors?: boolean;
     limit?: number;
   }): Promise<BuiltEnvelope<NewInitiationRow[]>> {
     return this.cache.getOrCompute(
@@ -268,7 +267,6 @@ export class QueryService {
     ticker: string;
     quarter?: string;
     minPctOfBook?: number;
-    includeNonSuperinvestors?: boolean;
     limit?: number;
   }): Promise<BuiltEnvelope<NewInitiationRow[]>> {
     const limit = input.limit ?? 500;
@@ -284,8 +282,9 @@ export class QueryService {
       if (priorCIKs.has(h.filerCIK)) continue;
       if (input.minPctOfBook !== undefined && h.pctOfBook < input.minPctOfBook) continue;
       const filer = await this.fetchFiler(h.filerCIK);
-      if (!input.includeNonSuperinvestors && (!filer || !filer.isSuperinvestor)) continue;
-      if (!filer) continue;
+      // Curated 22-manager universe only — non-roster filers aren't ingested
+      // in v1, so this is a safety net rather than a user-facing filter.
+      if (!filer || !filer.isSuperinvestor) continue;
       const filing = await this.fetchActiveFiling(h.filerCIK, current);
       if (!filing) continue;
       rows.push(buildNewInitiationRow(h, filer, filing));
@@ -317,7 +316,6 @@ export class QueryService {
     ticker: string;
     quarter?: string;
     minPriorPctOfBook?: number;
-    includeNonSuperinvestors?: boolean;
     limit?: number;
   }): Promise<BuiltEnvelope<ExitRow[]>> {
     return this.cache.getOrCompute(
@@ -331,7 +329,6 @@ export class QueryService {
     ticker: string;
     quarter?: string;
     minPriorPctOfBook?: number;
-    includeNonSuperinvestors?: boolean;
     limit?: number;
   }): Promise<BuiltEnvelope<ExitRow[]>> {
     const limit = input.limit ?? 500;
@@ -346,8 +343,7 @@ export class QueryService {
       if (currentCIKs.has(h.filerCIK)) continue;
       if (input.minPriorPctOfBook !== undefined && h.pctOfBook < input.minPriorPctOfBook) continue;
       const filer = await this.fetchFiler(h.filerCIK);
-      if (!input.includeNonSuperinvestors && (!filer || !filer.isSuperinvestor)) continue;
-      if (!filer) continue;
+      if (!filer || !filer.isSuperinvestor) continue;
       const priorFiling = await this.fetchActiveFiling(h.filerCIK, prior);
       const currentFiling = await this.fetchActiveFiling(h.filerCIK, current);
       if (!priorFiling || !currentFiling) continue;
@@ -381,7 +377,6 @@ export class QueryService {
     quarter?: string;
     minDeltaPct?: number;
     direction?: 'add' | 'trim' | 'both';
-    includeNonSuperinvestors?: boolean;
     limit?: number;
   }): Promise<BuiltEnvelope<ResizeRow[]>> {
     return this.cache.getOrCompute(
@@ -396,7 +391,6 @@ export class QueryService {
     quarter?: string;
     minDeltaPct?: number;
     direction?: 'add' | 'trim' | 'both';
-    includeNonSuperinvestors?: boolean;
     limit?: number;
   }): Promise<BuiltEnvelope<ResizeRow[]>> {
     const limit = input.limit ?? 500;
@@ -416,8 +410,7 @@ export class QueryService {
       if (delta !== 'add' && delta !== 'trim') continue;
       if (direction !== 'both' && direction !== delta) continue;
       const filer = await this.fetchFiler(h.filerCIK);
-      if (!input.includeNonSuperinvestors && (!filer || !filer.isSuperinvestor)) continue;
-      if (!filer) continue;
+      if (!filer || !filer.isSuperinvestor) continue;
       const priorFiling = await this.fetchActiveFiling(h.filerCIK, prior);
       const currentFiling = await this.fetchActiveFiling(h.filerCIK, current);
       if (!priorFiling || !currentFiling) continue;
@@ -800,7 +793,6 @@ export class QueryService {
     ticker: string;
     quarter?: string;
     minPctOfBook?: number;
-    includeNonSuperinvestors?: boolean;
     limit?: number;
   }): Promise<BuiltEnvelope<TickerDeltaRows>> {
     return this.cache.getOrCompute(
@@ -814,7 +806,6 @@ export class QueryService {
     ticker: string;
     quarter?: string;
     minPctOfBook?: number;
-    includeNonSuperinvestors?: boolean;
     limit?: number;
   }): Promise<BuiltEnvelope<TickerDeltaRows>> {
     const limit = input.limit ?? 500;
@@ -825,27 +816,18 @@ export class QueryService {
       ticker,
       quarter: current,
       ...(input.minPctOfBook !== undefined ? { minPctOfBook: input.minPctOfBook } : {}),
-      ...(input.includeNonSuperinvestors !== undefined
-        ? { includeNonSuperinvestors: input.includeNonSuperinvestors }
-        : {}),
       limit,
     };
     const baseQ2 = {
       ticker,
       quarter: current,
       ...(input.minPctOfBook !== undefined ? { minPriorPctOfBook: input.minPctOfBook } : {}),
-      ...(input.includeNonSuperinvestors !== undefined
-        ? { includeNonSuperinvestors: input.includeNonSuperinvestors }
-        : {}),
       limit,
     };
     const baseQ3 = {
       ticker,
       quarter: current,
       direction: 'both' as const,
-      ...(input.includeNonSuperinvestors !== undefined
-        ? { includeNonSuperinvestors: input.includeNonSuperinvestors }
-        : {}),
       limit,
     };
     const [news, exits, resizes] = await Promise.all([

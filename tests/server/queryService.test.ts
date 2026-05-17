@@ -230,7 +230,6 @@ describe('Q1 query_new_initiations_in_ticker', () => {
 
     const env = await svc.q1NewInitiations({
       ticker: 'POOL',
-      includeNonSuperinvestors: true,
       limit: 5,
     });
     expect(env.rows).toHaveLength(5);

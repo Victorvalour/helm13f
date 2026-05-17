@@ -216,7 +216,7 @@ The ENVELOPE wrapper itself is what each tool's `outputSchema` describes (root `
 - `meta.truncated`, `meta.totalRowsAvailable`, `meta.limitApplied` MUST be present on every envelope (`truncated=false` when no truncation occurred).
 
 ### Q1 `query_new_initiations_in_ticker`
-**Input:** `{ ticker: string, quarter?: string, minPctOfBook?: number, includeNonSuperinvestors?: boolean, limit?: number /* default 500 */ }`
+**Input:** `{ ticker: string, quarter?: string, minPctOfBook?: number, limit?: number /* default 500 */ }` (v1: scoped to curated 22-manager universe; non-roster filer ingestion is a roadmap item)
 
 **Row shape:**
 ```jsonc

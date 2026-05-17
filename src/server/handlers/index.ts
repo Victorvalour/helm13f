@@ -121,8 +121,6 @@ export function makeHandlers(
       if (isError(quarter)) return quarter;
       const minPctOfBook = optionalNumber(args, 'minPctOfBook', 0, 1);
       if (isError(minPctOfBook)) return minPctOfBook;
-      const includeNonSuperinvestors = optionalBool(args, 'includeNonSuperinvestors');
-      if (isError(includeNonSuperinvestors)) return includeNonSuperinvestors;
       const limit = optionalInt(args, 'limit', 1, 5000);
       if (isError(limit)) return limit;
 
@@ -130,7 +128,6 @@ export function makeHandlers(
         ticker,
         ...(quarter !== undefined ? { quarter } : {}),
         ...(minPctOfBook !== undefined ? { minPctOfBook } : {}),
-        ...(includeNonSuperinvestors !== undefined ? { includeNonSuperinvestors } : {}),
         ...(limit !== undefined ? { limit } : {}),
       });
       return ok(env);
@@ -143,8 +140,6 @@ export function makeHandlers(
       if (isError(quarter)) return quarter;
       const minPriorPctOfBook = optionalNumber(args, 'minPriorPctOfBook', 0, 1);
       if (isError(minPriorPctOfBook)) return minPriorPctOfBook;
-      const includeNonSuperinvestors = optionalBool(args, 'includeNonSuperinvestors');
-      if (isError(includeNonSuperinvestors)) return includeNonSuperinvestors;
       const limit = optionalInt(args, 'limit', 1, 5000);
       if (isError(limit)) return limit;
 
@@ -152,7 +147,6 @@ export function makeHandlers(
         ticker,
         ...(quarter !== undefined ? { quarter } : {}),
         ...(minPriorPctOfBook !== undefined ? { minPriorPctOfBook } : {}),
-        ...(includeNonSuperinvestors !== undefined ? { includeNonSuperinvestors } : {}),
         ...(limit !== undefined ? { limit } : {}),
       });
       return ok(env);
@@ -174,8 +168,6 @@ export function makeHandlers(
       ) {
         return err('invalid_input', "input.direction must be 'add' | 'trim' | 'both'");
       }
-      const includeNonSuperinvestors = optionalBool(args, 'includeNonSuperinvestors');
-      if (isError(includeNonSuperinvestors)) return includeNonSuperinvestors;
       const limit = optionalInt(args, 'limit', 1, 5000);
       if (isError(limit)) return limit;
 
@@ -184,7 +176,6 @@ export function makeHandlers(
         ...(quarter !== undefined ? { quarter } : {}),
         ...(minDeltaPct !== undefined ? { minDeltaPct } : {}),
         ...(direction !== undefined ? { direction } : {}),
-        ...(includeNonSuperinvestors !== undefined ? { includeNonSuperinvestors } : {}),
         ...(limit !== undefined ? { limit } : {}),
       });
       return ok(env);
@@ -242,8 +233,6 @@ export function makeHandlers(
       if (isError(quarter)) return quarter;
       const minPctOfBook = optionalNumber(args, 'minPctOfBook', 0, 1);
       if (isError(minPctOfBook)) return minPctOfBook;
-      const includeNonSuperinvestors = optionalBool(args, 'includeNonSuperinvestors');
-      if (isError(includeNonSuperinvestors)) return includeNonSuperinvestors;
       const limit = optionalInt(args, 'limit', 1, 5000);
       if (isError(limit)) return limit;
 
@@ -251,7 +240,6 @@ export function makeHandlers(
         ticker,
         ...(quarter !== undefined ? { quarter } : {}),
         ...(minPctOfBook !== undefined ? { minPctOfBook } : {}),
-        ...(includeNonSuperinvestors !== undefined ? { includeNonSuperinvestors } : {}),
         ...(limit !== undefined ? { limit } : {}),
       });
       return ok(env);

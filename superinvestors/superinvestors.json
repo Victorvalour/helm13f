@@ -1,6 +1,6 @@
 {
   "$schema": "./schema.json",
-  "sourceNotes": "Curated seed roster for Helm13F. Each entry's CIK was verified against data.sec.gov/submissions/CIK{padded}.json. Aliases include common nicknames the fuzzy resolver should accept. Tier is qualitative (legendary | well-known | notable). The full ~150 entries land via the maintenance script in superinvestors/scripts/.",
+  "sourceNotes": "Helm13F v1 curated roster (22 entries). Each entry's CIK was verified against data.sec.gov/submissions/CIK{padded}.json with non-zero 13F-HR filing history. Aliases include common nicknames the fuzzy resolver should accept. Tier is qualitative (legendary | well-known | notable). This is the tool's complete filer universe in v1 — Q1/Q2/Q3/Q5/Q6 queries are scoped to these filers. Roster expansion is a roadmap item.",
   "lastVerifiedAt": "2026-05-04",
   "entries": [
     {
